@@ -145,6 +145,7 @@ export function ShellLayout() {
             <NavItem to={ROUTES.DASHBOARD} icon={LayoutDashboard} label="Dashboard" />
             <NavItem to={ROUTES.MEETINGS} icon={CalendarDays} label="Réunions" />
             <NavItem to={ROUTES.ACTIONS} icon={CheckSquare} label="Actions"
+              
               badge={badges.lateActions > 0 ? badges.lateActions : badges.openActions > 0 ? badges.openActions : 0}
               badgeLevel={badges.lateActions > 0 ? 'critical' : badges.openActions > 0 ? 'warn' : null}
               pulse={badges.lateActions > 0}
@@ -165,6 +166,7 @@ export function ShellLayout() {
             />
             <NavItem to={ROUTES.MOOD} icon={Activity} label="Baromètre" />
             <NavItem to={ROUTES.SCHEDULE} icon={Calendar} label="Planning" />
+            <NavItem to="/leaves" icon={Calendar} label="Congés" />
           </NavSection>
         </nav>
 
