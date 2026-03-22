@@ -1,409 +1,475 @@
-import { useState, useEffect } from 'react'
-import { useMeetings, useCreateMeeting } from './useMeetings'
+import { useState, useRef } from 'react'
+import { useCreateMeeting } from './useMeetings'
 import { useColleagues } from '../colleagues/useColleagues'
+import { supabase } from '../../lib/supabase'
+import { useQueryClient } from '@tanstack/react-query'
+import { QK } from '../../constants'
+import {
+  X, Plus, Check, ChevronDown, Loader2,
+  CalendarDays, Clock, Users, FileText,
+  ThumbsUp, ThumbsDown, AlertTriangle, Heart, Trash2
+} from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import {
-  X, Check, Plus, ChevronRight, ChevronLeft,
-  ThumbsUp, ThumbsDown, AlertCircle, Heart,
-  Users, CalendarDays, Clock, FileText, Loader2, Trash2
-} from 'lucide-react'
-import { Avatar } from '../../components/ui'
 import { toast } from 'sonner'
 
-function useNextMeetingTitle() {
-  return `Réunion GT Hebdo — ${format(new Date(), 'dd/MM/yyyy', { locale: fr })}`
-}
+// ─── Types ────────────────────────────────────────────────────────────────────
+type CRCategory = 'success' | 'failure' | 'sensitive' | 'relational'
+type CRItem = { content: string; attributed_to: string | null; tempId: string }
 
-// ─── Step 1 : Infos ───────────────────────────────────────────────────────────
-function StepInfo({ title, setTitle, description, setDescription, date, setDate, time, setTime }: {
-  title: string; setTitle: (v: string) => void
-  description: string; setDescription: (v: string) => void
-  date: string; setDate: (v: string) => void
-  time: string; setTime: (v: string) => void
-}) {
+const CR_SECTIONS: {
+  key: CRCategory; label: string; color: string; bg: string; border: string; icon: typeof ThumbsUp; placeholder: string
+}[] = [
+  { key: 'success',    label: 'Succès',          color: '#1D9E75', bg: '#1D9E7508', border: '#1D9E7525', icon: ThumbsUp,       placeholder: 'Ex: Livraison en avance, objectif atteint...' },
+  { key: 'failure',    label: 'Défauts',          color: '#E24B4A', bg: '#E24B4A08', border: '#E24B4A25', icon: ThumbsDown,     placeholder: 'Ex: Machine en panne, retard fournisseur...' },
+  { key: 'sensitive',  label: 'Points sensibles', color: '#EF9F27', bg: '#EF9F2708', border: '#EF9F2725', icon: AlertTriangle,  placeholder: 'Ex: Tension charge de travail, délai serré...' },
+  { key: 'relational', label: 'Points relationnels', color: '#7F77DD', bg: '#7F77DD08', border: '#7F77DD25', icon: Heart,    placeholder: 'Ex: Conflit entre équipes, bonne cohésion...' },
+]
+
+// ─── Avatar initials ──────────────────────────────────────────────────────────
+const AVATAR_COLORS = [
+  { bg: '#1D9E7520', color: '#5DCAA5' }, { bg: '#7F77DD20', color: '#AFA9EC' },
+  { bg: '#378ADD20', color: '#85B7EB' }, { bg: '#EF9F2720', color: '#FAC775' },
+  { bg: '#E24B4A20', color: '#F09595' }, { bg: '#D4537E20', color: '#ED93B1' },
+]
+function ColleagueAvatar({ name, size = 22 }: { name: string; size?: number }) {
+  const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+  const idx = name.charCodeAt(0) % AVATAR_COLORS.length
+  const { bg, color } = AVATAR_COLORS[idx]
   return (
-    <div className="flex flex-col gap-7">
-      <div>
-        <label style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', display: 'block', marginBottom: 8 }}>
-          Titre de la réunion
-        </label>
-        <input
-          value={title} onChange={e => setTitle(e.target.value)}
-          placeholder="Ex: Réunion GT Hebdo — 22/03/2026"
-          autoFocus
-          style={{ width: '100%', background: 'transparent', borderBottom: '2px solid #1D9E75', paddingBottom: 8, fontSize: 18, color: '#fff', outline: 'none', fontFamily: "'DM Mono',monospace" }}
-        />
-      </div>
-      <div>
-        <label style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', display: 'block', marginBottom: 8 }}>
-          Description / ordre du jour
-        </label>
-        <textarea
-          value={description} onChange={e => setDescription(e.target.value)}
-          placeholder="Contexte, objectifs, points à aborder..."
-          rows={3}
-          style={{ width: '100%', background: 'transparent', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 8, fontSize: 13, color: 'rgba(255,255,255,0.7)', outline: 'none', resize: 'none', fontFamily: "'DM Mono',monospace" }}
-        />
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-        <div>
-          <label style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', display: 'block', marginBottom: 8 }}>
-            Date
-          </label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 8 }}>
-            <CalendarDays style={{ width: 14, height: 14, color: 'rgba(255,255,255,0.25)', flexShrink: 0 }} />
-            <input type="date" value={date} onChange={e => setDate(e.target.value)}
-              style={{ flex: 1, background: 'transparent', border: 'none', fontSize: 13, color: '#fff', outline: 'none', fontFamily: "'DM Mono',monospace" }} />
-          </div>
-        </div>
-        <div>
-          <label style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', display: 'block', marginBottom: 8 }}>
-            Heure
-          </label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 8 }}>
-            <Clock style={{ width: 14, height: 14, color: 'rgba(255,255,255,0.25)', flexShrink: 0 }} />
-            <input type="time" value={time} onChange={e => setTime(e.target.value)}
-              style={{ flex: 1, background: 'transparent', border: 'none', fontSize: 13, color: '#fff', outline: 'none', fontFamily: "'DM Mono',monospace" }} />
-          </div>
-        </div>
-      </div>
+    <div style={{ width: size, height: size, borderRadius: '50%', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.36, fontWeight: 700, color, flexShrink: 0, letterSpacing: '-0.02em' }}>
+      {initials}
     </div>
   )
 }
 
-// ─── Step 2 : Participants ────────────────────────────────────────────────────
-function StepPeople({ colleagues, selected, onToggle }: {
-  colleagues: any[]; selected: string[]; onToggle: (id: string) => void
+// ─── CR Item row ──────────────────────────────────────────────────────────────
+function CRItemRow({
+  item, color, placeholder, colleagues, onChange, onRemove, autoFocus
+}: {
+  item: CRItem; color: string; placeholder: string
+  colleagues: any[]; onChange: (item: CRItem) => void; onRemove: () => void; autoFocus?: boolean
 }) {
+  const [showPicker, setShowPicker] = useState(false)
+  const pickerRef = useRef<HTMLDivElement>(null)
+  const attributed = colleagues.find(c => c.id === item.attributed_to)
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      {colleagues.length === 0 && <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.25)', textAlign: 'center', paddingTop: 32 }}>Aucun collègue enregistré</p>}
-      {colleagues.map(c => {
-        const isSelected = selected.includes(c.id)
-        return (
-          <button key={c.id} type="button" onClick={() => onToggle(c.id)}
+    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+      {/* Dot */}
+      <div style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0, marginTop: 10 }} />
+
+      {/* Content input */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <input
+          value={item.content}
+          onChange={e => onChange({ ...item, content: e.target.value })}
+          placeholder={placeholder}
+          autoFocus={autoFocus}
+          style={{
+            width: '100%', background: 'rgba(255,255,255,0.04)', border: `1px solid rgba(255,255,255,0.07)`,
+            borderRadius: 8, padding: '7px 12px', fontSize: 13, color: '#e8eaf0',
+            outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.15s',
+          }}
+          onFocus={e => (e.target.style.borderColor = color + '80')}
+          onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.07)')}
+        />
+
+        {/* Attribution row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 5, position: 'relative' }}>
+          <button
+            type="button"
+            onClick={() => setShowPicker(!showPicker)}
             style={{
-              display: 'flex', alignItems: 'center', gap: 14, padding: '10px 14px',
-              borderRadius: 12, border: `1px solid ${isSelected ? '#1D9E7560' : 'rgba(255,255,255,0.06)'}`,
-              background: isSelected ? '#1D9E7510' : 'transparent',
-              cursor: 'pointer', transition: 'all 0.15s', textAlign: 'left',
-            }}>
-            <Avatar name={c.name} size="md" />
-            <div style={{ flex: 1 }}>
-              <p style={{ fontSize: 13, fontWeight: 500, color: '#fff', margin: 0 }}>{c.name}</p>
-              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', margin: 0, fontFamily: "'DM Mono',monospace" }}>{c.post}</p>
-            </div>
-            <div style={{
-              width: 20, height: 20, borderRadius: '50%', border: `2px solid ${isSelected ? '#1D9E75' : 'rgba(255,255,255,0.15)'}`,
-              background: isSelected ? '#1D9E75' : 'transparent',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s',
-            }}>
-              {isSelected && <Check style={{ width: 11, height: 11, color: '#fff' }} />}
-            </div>
+              display: 'flex', alignItems: 'center', gap: 5,
+              padding: '3px 8px', borderRadius: 20, fontSize: 11,
+              background: attributed ? `${color}15` : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${attributed ? color + '35' : 'rgba(255,255,255,0.07)'}`,
+              color: attributed ? color : 'rgba(255,255,255,0.3)',
+              cursor: 'pointer', transition: 'all 0.15s',
+            }}
+          >
+            {attributed ? (
+              <>
+                <ColleagueAvatar name={attributed.name} size={14} />
+                <span style={{ fontFamily: 'monospace' }}>{attributed.name.split(' ')[0]}</span>
+              </>
+            ) : (
+              <>
+                <Users style={{ width: 10, height: 10 }} />
+                <span style={{ fontFamily: 'monospace' }}>Attribuer à...</span>
+              </>
+            )}
+            <ChevronDown style={{ width: 9, height: 9, opacity: 0.6 }} />
           </button>
-        )
-      })}
-      {selected.length > 0 && (
-        <p style={{ fontSize: 10, textAlign: 'center', marginTop: 4, color: '#1D9E75', fontFamily: "'DM Mono',monospace" }}>
-          {selected.length} participant{selected.length > 1 ? 's' : ''} sélectionné{selected.length > 1 ? 's' : ''}
-        </p>
+
+          {/* Picker dropdown */}
+          {showPicker && (
+            <div
+              ref={pickerRef}
+              style={{
+                position: 'absolute', left: 0, top: '100%', marginTop: 4, zIndex: 30,
+                background: '#161b26', border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: 12, overflow: 'hidden', minWidth: 180,
+                boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => { onChange({ ...item, attributed_to: null }); setShowPicker(false) }}
+                style={{ width: '100%', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8, background: !item.attributed_to ? 'rgba(255,255,255,0.05)' : 'transparent', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.5)', fontSize: 12, textAlign: 'left' }}>
+                <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <X style={{ width: 10, height: 10 }} />
+                </div>
+                Aucune attribution
+              </button>
+              {colleagues.map(c => (
+                <button
+                  key={c.id} type="button"
+                  onClick={() => { onChange({ ...item, attributed_to: c.id }); setShowPicker(false) }}
+                  style={{ width: '100%', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8, background: item.attributed_to === c.id ? `${color}12` : 'transparent', border: 'none', cursor: 'pointer', color: item.attributed_to === c.id ? color : 'rgba(255,255,255,0.7)', fontSize: 12, textAlign: 'left' }}>
+                  <ColleagueAvatar name={c.name} size={18} />
+                  <div style={{ flex: 1 }}>
+                    <span style={{ display: 'block', fontWeight: 500 }}>{c.name}</span>
+                    <span style={{ display: 'block', fontSize: 10, opacity: 0.5 }}>{c.post}</span>
+                  </div>
+                  {item.attributed_to === c.id && <Check style={{ width: 11, height: 11 }} />}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Remove */}
+      <button
+        type="button" onClick={onRemove}
+        style={{ padding: 5, background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.15)', borderRadius: 6, display: 'flex', transition: 'color 0.15s', flexShrink: 0 }}
+        onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = '#E24B4A')}
+        onMouseLeave={e => ((e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.15)')}>
+        <Trash2 style={{ width: 12, height: 12 }} />
+      </button>
+    </div>
+  )
+}
+
+// ─── Section collapsible ──────────────────────────────────────────────────────
+function CRSection({
+  section, items, colleagues, onChange
+}: {
+  section: typeof CR_SECTIONS[0]; items: CRItem[]; colleagues: any[]
+  onChange: (items: CRItem[]) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const Icon = section.icon
+  const filled = items.filter(i => i.content.trim()).length
+
+  const addItem = () => {
+    onChange([...items, { content: '', attributed_to: null, tempId: Math.random().toString(36) }])
+    if (!open) setOpen(true)
+  }
+
+  const updateItem = (idx: number, item: CRItem) => {
+    const next = [...items]; next[idx] = item; onChange(next)
+  }
+
+  const removeItem = (idx: number) => {
+    const next = items.filter((_, i) => i !== idx)
+    onChange(next.length === 0 ? [{ content: '', attributed_to: null, tempId: Math.random().toString(36) }] : next)
+  }
+
+  return (
+    <div style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <button
+          type="button" onClick={() => setOpen(!open)}
+          style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '12px 0', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+          <div style={{ width: 28, height: 28, borderRadius: 8, background: section.bg, border: `1px solid ${section.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Icon style={{ width: 13, height: 13, color: section.color }} />
+          </div>
+          <span style={{ fontSize: 13, fontWeight: 600, color: open ? section.color : 'rgba(255,255,255,0.7)', transition: 'color 0.15s' }}>{section.label}</span>
+          {filled > 0 && (
+            <span style={{ fontSize: 10, color: section.color, background: `${section.color}15`, borderRadius: 20, padding: '1px 7px', fontFamily: 'monospace', fontWeight: 600 }}>
+              {filled}
+            </span>
+          )}
+          <ChevronDown style={{ width: 14, height: 14, color: 'rgba(255,255,255,0.3)', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', marginLeft: 'auto' }} />
+        </button>
+        <button
+          type="button" onClick={addItem}
+          style={{ padding: '5px 10px', background: `${section.color}12`, border: `1px solid ${section.border}`, borderRadius: 20, color: section.color, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'monospace', flexShrink: 0 }}>
+          <Plus style={{ width: 10, height: 10 }} /> Ajouter
+        </button>
+      </div>
+
+      {open && (
+        <div style={{ paddingBottom: 8 }}>
+          {items.map((item, idx) => (
+            <CRItemRow
+              key={item.tempId}
+              item={item}
+              color={section.color}
+              placeholder={section.placeholder}
+              colleagues={colleagues}
+              onChange={updated => updateItem(idx, updated)}
+              onRemove={() => removeItem(idx)}
+              autoFocus={idx === items.length - 1 && item.content === ''}
+            />
+          ))}
+        </div>
       )}
     </div>
   )
 }
 
-// ─── Step 3 : Compte-rendu (tout en même temps) ───────────────────────────────
-const CR_SECTIONS = [
-  { key: 'successes',  label: 'Succès',            icon: ThumbsUp,    color: '#1D9E75', border: '#1D9E7530', bg: '#1D9E7508', placeholder: 'Un point positif...' },
-  { key: 'failures',   label: 'Défauts',            icon: ThumbsDown,  color: '#E24B4A', border: '#E24B4A30', bg: '#E24B4A08', placeholder: 'Un point à améliorer...' },
-  { key: 'sensitive',  label: 'Points sensibles',   icon: AlertCircle, color: '#EF9F27', border: '#EF9F2730', bg: '#EF9F2708', placeholder: 'Un point de vigilance...' },
-  { key: 'relational', label: 'Points relationnels',icon: Heart,       color: '#7F77DD', border: '#7F77DD30', bg: '#7F77DD08', placeholder: 'Un point relationnel...' },
-]
-
-function CRSection({ section, items, onChange }: {
-  section: typeof CR_SECTIONS[0]
-  items: string[]
-  onChange: (items: string[]) => void
-}) {
-  const Icon = section.icon
-
-  const update = (i: number, val: string) => {
-    const next = [...items]; next[i] = val; onChange(next)
-  }
-  const add = () => onChange([...items, ''])
-  const remove = (i: number) => onChange(items.filter((_, idx) => idx !== i))
-
-  const validCount = items.filter(s => s.trim()).length
-
-  return (
-    <div style={{
-      border: `1px solid ${section.border}`,
-      borderRadius: 14,
-      background: section.bg,
-      overflow: 'hidden',
-    }}>
-      {/* Section header */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        padding: '10px 14px',
-        borderBottom: `1px solid ${section.border}`,
-        background: section.bg,
-      }}>
-        <Icon style={{ width: 13, height: 13, color: section.color, flexShrink: 0 }} />
-        <span style={{ fontSize: 11, fontWeight: 500, color: section.color, fontFamily: "'DM Mono',monospace", letterSpacing: '0.06em' }}>
-          {section.label}
-        </span>
-        {validCount > 0 && (
-          <span style={{
-            marginLeft: 'auto', fontSize: 10, color: section.color,
-            background: section.border, borderRadius: 20, padding: '1px 7px',
-            fontFamily: "'DM Mono',monospace",
-          }}>
-            {validCount}
-          </span>
-        )}
-      </div>
-
-      {/* Items */}
-      <div style={{ padding: '8px 14px 10px' }}>
-        {items.map((item, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}
-            className="group">
-            <div style={{ width: 3, height: 3, borderRadius: '50%', background: item.trim() ? section.color : 'rgba(255,255,255,0.15)', flexShrink: 0, marginTop: 1 }} />
-            <input
-              value={item}
-              onChange={e => update(i, e.target.value)}
-              placeholder={section.placeholder}
-              onKeyDown={e => {
-                if (e.key === 'Enter') { e.preventDefault(); add() }
-                if (e.key === 'Backspace' && !item && items.length > 1) { e.preventDefault(); remove(i) }
-              }}
-              style={{
-                flex: 1, background: 'transparent', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.06)',
-                padding: '5px 0', fontSize: 13, color: '#e8eaf0', outline: 'none',
-                fontFamily: "'DM Mono',monospace",
-              }}
-            />
-            {items.length > 1 && item.trim() === '' && (
-              <button type="button" onClick={() => remove(i)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.15)', padding: 2 }}>
-                <X style={{ width: 10, height: 10 }} />
-              </button>
-            )}
-          </div>
-        ))}
-        <button type="button" onClick={add}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6, marginTop: 6,
-            background: 'none', border: 'none', cursor: 'pointer',
-            fontSize: 11, color: section.color, opacity: 0.6, fontFamily: "'DM Mono',monospace",
-            padding: 0, transition: 'opacity 0.15s',
-          }}
-          onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
-          onMouseLeave={e => (e.currentTarget.style.opacity = '0.6')}
-        >
-          <div style={{ width: 14, height: 14, border: `1px solid ${section.color}`, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Plus style={{ width: 9, height: 9 }} />
-          </div>
-          Ajouter
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function StepCR({ successes, setSuccesses, failures, setFailures, sensitive, setSensitive, relational, setRelational }: {
-  successes: string[]; setSuccesses: (v: string[]) => void
-  failures: string[]; setFailures: (v: string[]) => void
-  sensitive: string[]; setSensitive: (v: string[]) => void
-  relational: string[]; setRelational: (v: string[]) => void
-}) {
-  const data = [
-    { section: CR_SECTIONS[0], items: successes, onChange: setSuccesses },
-    { section: CR_SECTIONS[1], items: failures,  onChange: setFailures  },
-    { section: CR_SECTIONS[2], items: sensitive,  onChange: setSensitive },
-    { section: CR_SECTIONS[3], items: relational, onChange: setRelational },
-  ]
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {data.map(d => (
-        <CRSection key={d.section.key} section={d.section} items={d.items} onChange={d.onChange} />
-      ))}
-    </div>
-  )
-}
-
-// ─── Progress stepper (3 steps now) ──────────────────────────────────────────
-const STEPS = [
-  { id: 'info',    label: 'Infos',    icon: FileText, color: '#1D9E75' },
-  { id: 'people',  label: 'Équipe',   icon: Users,    color: '#378ADD' },
-  { id: 'cr',      label: 'Compte-rendu', icon: FileText, color: '#7F77DD' },
-]
-
-// ─── Main modal ───────────────────────────────────────────────────────────────
+// ─── Main Modal ───────────────────────────────────────────────────────────────
 export function NewMeetingModal({ onClose }: { onClose: () => void }) {
-  const { data: meetings } = useMeetings()
-  const { data: colleagues } = useColleagues()
   const createMeeting = useCreateMeeting()
-  const defaultTitle = useNextMeetingTitle()
+  const { data: colleagues } = useColleagues()
+  const qc = useQueryClient()
 
-  const [step, setStep] = useState(0)
-  const [title, setTitle] = useState(defaultTitle)
+  const [step, setStep] = useState<'info' | 'team' | 'cr'>('info')
+  const [title, setTitle] = useState(format(new Date(), `'Réunion GT Hebdo — 'dd/MM/yyyy`))
   const [description, setDescription] = useState('')
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [time, setTime] = useState('09:00')
   const [selectedColleagues, setSelectedColleagues] = useState<string[]>([])
-  const [successes, setSuccesses] = useState([''])
-  const [failures, setFailures] = useState([''])
-  const [sensitive, setSensitive] = useState([''])
-  const [relational, setRelational] = useState([''])
+  const [submitting, setSubmitting] = useState(false)
 
-  useEffect(() => {
-    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', h)
-    return () => window.removeEventListener('keydown', h)
-  }, [onClose])
+  const makeItems = (): CRItem[] => [{ content: '', attributed_to: null, tempId: Math.random().toString(36) }]
+  const [crItems, setCrItems] = useState<Record<CRCategory, CRItem[]>>({
+    success: makeItems(), failure: makeItems(), sensitive: makeItems(), relational: makeItems(),
+  })
 
+  const activeColleagues = (colleagues ?? []).filter((c: any) => c.is_active !== false)
   const toggleColleague = (id: string) =>
-    setSelectedColleagues(p => p.includes(id) ? p.filter(c => c !== id) : [...p, id])
+    setSelectedColleagues(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id])
 
-  const clean = (arr: string[]) => arr.map(s => s.trim()).filter(Boolean)
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!title.trim()) { toast.error('Titre requis'); return }
+    setSubmitting(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      const dateTime = `${date}T${time}:00`
 
-  const handleSubmit = async () => {
-    if (!title.trim()) { toast.error('Le titre est obligatoire'); setStep(0); return }
-    await createMeeting.mutateAsync({
-      title: title.trim(),
-      description: description || null,
-      date: `${date}T${time}:00`,
-      colleagues_ids: selectedColleagues.length > 0 ? selectedColleagues : null,
-      successes: clean(successes),
-      failures: clean(failures),
-      sensitive_points: clean(sensitive),
-      relational_points: clean(relational),
-      created_by_user_id: null,
-    })
-    onClose()
+      // Créer la réunion
+      const meeting = await createMeeting.mutateAsync({
+        title: title.trim(),
+        description: description.trim() || null,
+        date: dateTime,
+        colleagues_ids: selectedColleagues.length > 0 ? selectedColleagues : null,
+        successes: crItems.success.filter(i => i.content.trim()).map(i => i.content.trim()),
+        failures: crItems.failure.filter(i => i.content.trim()).map(i => i.content.trim()),
+        sensitive_points: crItems.sensitive.filter(i => i.content.trim()).map(i => i.content.trim()),
+        relational_points: crItems.relational.filter(i => i.content.trim()).map(i => i.content.trim()),
+        created_by_user_id: user?.id ?? null,
+      })
+
+      // Insérer les cr_items avec attribution dans la nouvelle table
+      const itemsToInsert: any[] = []
+      const categoryMap: Record<CRCategory, string> = {
+        success: 'success', failure: 'failure', sensitive: 'sensitive', relational: 'relational'
+      }
+      Object.entries(crItems).forEach(([cat, items]) => {
+        items.filter(i => i.content.trim()).forEach((item, idx) => {
+          itemsToInsert.push({
+            meeting_id: meeting.id,
+            category: categoryMap[cat as CRCategory],
+            content: item.content.trim(),
+            attributed_to: item.attributed_to || null,
+            order_index: idx,
+          })
+        })
+      })
+
+      if (itemsToInsert.length > 0) {
+        await supabase.from('cr_items').insert(itemsToInsert)
+        qc.invalidateQueries({ queryKey: ['cr_items', meeting.id] })
+      }
+
+      toast.success('Réunion créée avec succès')
+      onClose()
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
-  const currentStep = STEPS[step]
-  const accentColor = currentStep.color
-  const progress = (step / (STEPS.length - 1)) * 100
+  const STEPS = [
+    { key: 'info', label: 'Informations', icon: FileText },
+    { key: 'team', label: 'Équipe', icon: Users },
+    { key: 'cr', label: 'Compte-rendu', icon: Check },
+  ] as const
 
-  const stepTitles = ['Informations générales', 'Participants présents', 'Compte-rendu complet']
+  const fieldStyle = {
+    width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+    borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#e8eaf0', outline: 'none',
+    boxSizing: 'border-box' as const, transition: 'border-color 0.15s',
+  }
 
   return (
     <div
+      style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'stretch', justifyContent: 'flex-end', background: 'rgba(0,0,0,0.65)' }}
       onClick={e => e.target === e.currentTarget && onClose()}
-      style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'stretch', justifyContent: 'flex-end', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
     >
-      <div style={{ height: '100%', width: '100%', maxWidth: 520, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#0d1018', borderLeft: '1px solid rgba(255,255,255,0.06)' }}>
+      <style>{`@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}} @keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      <div style={{
+        width: 520, height: '100%', background: '#0d1018',
+        borderLeft: '1px solid rgba(255,255,255,0.08)',
+        display: 'flex', flexDirection: 'column', overflow: 'hidden',
+        animation: 'slideIn 0.25s ease',
+        boxShadow: '-24px 0 60px rgba(0,0,0,0.5)',
+      }}>
 
         {/* Header */}
-        <div style={{ flexShrink: 0, padding: '28px 32px 0' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <div>
-              <p style={{ fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 4, color: accentColor, fontFamily: "'DM Mono',monospace" }}>
-                Nouvelle réunion · étape {step + 1}/{STEPS.length}
-              </p>
-              <h2 style={{ fontSize: 22, fontWeight: 500, color: '#fff', margin: 0, letterSpacing: '-0.02em' }}>{stepTitles[step]}</h2>
+              <p style={{ fontSize: 10, color: '#1D9E75', fontFamily: 'monospace', letterSpacing: '0.12em', textTransform: 'uppercase', margin: 0 }}>Nouvelle réunion</p>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: '#fff', margin: '3px 0 0', letterSpacing: '-0.02em' }}>Créer un compte-rendu</h2>
             </div>
-            <button onClick={onClose} style={{ padding: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, cursor: 'pointer', color: 'rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <button onClick={onClose}
+              style={{ padding: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, cursor: 'pointer', color: 'rgba(255,255,255,0.4)', display: 'flex' }}>
               <X style={{ width: 14, height: 14 }} />
             </button>
           </div>
 
-          {/* Progress */}
-          <div style={{ marginTop: 24, position: 'relative' }}>
-            <div style={{ height: 1, width: '100%', background: 'rgba(255,255,255,0.06)' }} />
-            <div style={{ position: 'absolute', top: 0, left: 0, height: 1, width: `${progress}%`, background: accentColor, transition: 'width 0.4s ease, background 0.3s ease' }} />
-          </div>
-
-          {/* Step dots */}
-          <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: 12, paddingBottom: 24 }}>
+          {/* Step indicator */}
+          <div style={{ display: 'flex', gap: 4 }}>
             {STEPS.map((s, i) => {
-              const Icon = s.icon
-              const done = i < step
-              const active = i === step
+              const isCurrent = step === s.key
+              const isDone = STEPS.findIndex(x => x.key === step) > i
               return (
-                <button key={s.id} type="button" onClick={() => i < step && setStep(i)}
-                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: i < step ? 'pointer' : 'default', padding: 0 }}>
-                  <div style={{
-                    width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s',
-                    background: done ? s.color : active ? s.color + '20' : 'rgba(255,255,255,0.04)',
-                    border: `1.5px solid ${done || active ? s.color : 'rgba(255,255,255,0.1)'}`,
-                  }}>
-                    {done
-                      ? <Check style={{ width: 13, height: 13, color: '#fff' }} />
-                      : <Icon style={{ width: 13, height: 13, color: active ? s.color : 'rgba(255,255,255,0.2)' }} />
-                    }
-                  </div>
-                  <span style={{ fontSize: 10, fontFamily: "'DM Mono',monospace", letterSpacing: '0.05em', color: active ? s.color : done ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.18)' }}>
-                    {s.label}
-                  </span>
+                <button key={s.key} type="button"
+                  onClick={() => setStep(s.key)}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '6px 8px', borderRadius: 8, border: `1px solid ${isCurrent ? '#1D9E75' : isDone ? '#1D9E7530' : 'rgba(255,255,255,0.07)'}`, background: isCurrent ? '#1D9E7512' : isDone ? '#1D9E7508' : 'transparent', cursor: 'pointer', transition: 'all 0.15s' }}>
+                  {isDone ? <Check style={{ width: 11, height: 11, color: '#1D9E75' }} /> : <s.icon style={{ width: 11, height: 11, color: isCurrent ? '#1D9E75' : 'rgba(255,255,255,0.3)' }} />}
+                  <span style={{ fontSize: 11, fontWeight: isCurrent ? 600 : 400, color: isCurrent ? '#5DCAA5' : isDone ? '#1D9E75' : 'rgba(255,255,255,0.35)', fontFamily: 'monospace' }}>{s.label}</span>
                 </button>
               )
             })}
           </div>
-
-          {/* Separator */}
-          <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', marginLeft: -32, marginRight: -32 }} />
         </div>
 
-        {/* Content */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
-          {step === 0 && (
-            <StepInfo
-              title={title} setTitle={setTitle}
-              description={description} setDescription={setDescription}
-              date={date} setDate={setDate}
-              time={time} setTime={setTime}
-            />
+        {/* Body */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
+
+          {/* Step 1 — Info */}
+          {step === 'info' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace', marginBottom: 6 }}>Titre *</label>
+                <input value={title} onChange={e => setTitle(e.target.value)} required autoFocus style={fieldStyle}
+                  onFocus={e => (e.target.style.borderColor = '#1D9E75')}
+                  onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.08)')} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace', marginBottom: 6 }}>Description</label>
+                <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2}
+                  placeholder="Contexte, ordre du jour..."
+                  style={{ ...fieldStyle, resize: 'none' }}
+                  onFocus={e => (e.target.style.borderColor = '#1D9E75')}
+                  onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.08)')} />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <CalendarDays style={{ width: 11, height: 11 }} /> Date
+                  </label>
+                  <input type="date" value={date} onChange={e => setDate(e.target.value)} style={fieldStyle}
+                    onFocus={e => (e.target.style.borderColor = '#1D9E75')}
+                    onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.08)')} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Clock style={{ width: 11, height: 11 }} /> Heure
+                  </label>
+                  <input type="time" value={time} onChange={e => setTime(e.target.value)} style={fieldStyle}
+                    onFocus={e => (e.target.style.borderColor = '#1D9E75')}
+                    onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.08)')} />
+                </div>
+              </div>
+            </div>
           )}
-          {step === 1 && (
-            <StepPeople
-              colleagues={colleagues ?? []}
-              selected={selectedColleagues}
-              onToggle={toggleColleague}
-            />
+
+          {/* Step 2 — Team */}
+          {step === 'team' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 8, fontFamily: 'monospace' }}>
+                {selectedColleagues.length} participant{selectedColleagues.length > 1 ? 's' : ''} sélectionné{selectedColleagues.length > 1 ? 's' : ''}
+              </p>
+              {activeColleagues.length === 0 && (
+                <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.2)', textAlign: 'center', padding: '24px 0' }}>Aucun collègue actif</p>
+              )}
+              {activeColleagues.map((c: any) => {
+                const selected = selectedColleagues.includes(c.id)
+                return (
+                  <button key={c.id} type="button" onClick={() => toggleColleague(c.id)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: selected ? '#1D9E7508' : 'rgba(255,255,255,0.02)', border: `1px solid ${selected ? '#1D9E7540' : 'rgba(255,255,255,0.07)'}`, borderRadius: 10, cursor: 'pointer', transition: 'all 0.15s' }}>
+                    <ColleagueAvatar name={c.name} size={32} />
+                    <div style={{ flex: 1, textAlign: 'left' }}>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: selected ? '#e8eaf0' : 'rgba(255,255,255,0.7)', margin: 0 }}>{c.name}</p>
+                      <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', margin: '1px 0 0', fontFamily: 'monospace' }}>{c.post}</p>
+                    </div>
+                    <div style={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${selected ? '#1D9E75' : 'rgba(255,255,255,0.15)'}`, background: selected ? '#1D9E75' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s', flexShrink: 0 }}>
+                      {selected && <Check style={{ width: 10, height: 10, color: '#fff' }} />}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
           )}
-          {step === 2 && (
-            <StepCR
-              successes={successes} setSuccesses={setSuccesses}
-              failures={failures} setFailures={setFailures}
-              sensitive={sensitive} setSensitive={setSensitive}
-              relational={relational} setRelational={setRelational}
-            />
+
+          {/* Step 3 — CR avec attribution */}
+          {step === 'cr' && (
+            <div>
+              <div style={{ padding: '10px 14px', background: '#1D9E7508', border: '1px solid #1D9E7520', borderRadius: 10, marginBottom: 16 }}>
+                <p style={{ fontSize: 12, color: '#5DCAA5', margin: 0, lineHeight: 1.5 }}>
+                  💡 Pour chaque point, vous pouvez l'attribuer à un membre de l'équipe — il apparaîtra dans son profil.
+                </p>
+              </div>
+              {CR_SECTIONS.map(section => (
+                <CRSection
+                  key={section.key}
+                  section={section}
+                  items={crItems[section.key]}
+                  colleagues={[...activeColleagues, ...selectedColleagues
+                    .filter(id => !activeColleagues.find((c: any) => c.id === id))
+                    .map(id => colleagues?.find((c: any) => c.id === id))
+                    .filter(Boolean)
+                  ]}
+                  onChange={items => setCrItems(prev => ({ ...prev, [section.key]: items }))}
+                />
+              ))}
+            </div>
           )}
         </div>
 
         {/* Footer */}
-        <div style={{ flexShrink: 0, padding: '16px 32px 24px', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: 12 }}>
-          {step > 0 && (
-            <button type="button" onClick={() => setStep(s => s - 1)}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px', fontSize: 13, color: 'rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, cursor: 'pointer', transition: 'all 0.15s' }}>
-              <ChevronLeft style={{ width: 14, height: 14 }} /> Retour
+        <div style={{ padding: '16px 24px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', gap: 10, flexShrink: 0 }}>
+          {step !== 'info' && (
+            <button type="button"
+              onClick={() => setStep(step === 'cr' ? 'team' : 'info')}
+              style={{ padding: '11px 16px', fontSize: 13, color: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, cursor: 'pointer' }}>
+              ← Retour
             </button>
           )}
-          <div style={{ flex: 1 }} />
-          {step === 2 && (
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)', fontFamily: "'DM Mono',monospace" }}>
-              Entrée pour ajouter une ligne
-            </span>
-          )}
-          {step < STEPS.length - 1 ? (
-            <button type="button" onClick={() => setStep(s => s + 1)}
-              disabled={step === 0 && !title.trim()}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px', fontSize: 13, fontWeight: 500, color: '#fff', background: accentColor, border: 'none', borderRadius: 10, cursor: 'pointer', transition: 'all 0.15s', opacity: step === 0 && !title.trim() ? 0.3 : 1 }}>
-              Suivant <ChevronRight style={{ width: 14, height: 14 }} />
+
+          {step !== 'cr' ? (
+            <button type="button"
+              onClick={() => setStep(step === 'info' ? 'team' : 'cr')}
+              disabled={step === 'info' && !title.trim()}
+              style={{ flex: 1, padding: '11px 0', fontSize: 13, fontWeight: 600, color: '#fff', background: '#1D9E75', border: 'none', borderRadius: 10, cursor: 'pointer', opacity: step === 'info' && !title.trim() ? 0.4 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              Suivant →
             </button>
           ) : (
-            <button type="button" onClick={handleSubmit} disabled={createMeeting.isPending}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 24px', fontSize: 13, fontWeight: 500, color: '#fff', background: accentColor, border: 'none', borderRadius: 10, cursor: 'pointer', transition: 'all 0.15s', opacity: createMeeting.isPending ? 0.6 : 1 }}>
-              {createMeeting.isPending
-                ? <><Loader2 style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} /> Création...</>
-                : <><Check style={{ width: 14, height: 14 }} /> Créer la réunion</>
-              }
+            <button
+              type="button" onClick={handleSubmit as any} disabled={submitting || !title.trim()}
+              style={{ flex: 1, padding: '11px 0', fontSize: 13, fontWeight: 700, color: '#fff', background: '#1D9E75', border: 'none', borderRadius: 10, cursor: 'pointer', opacity: !title.trim() ? 0.4 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              {submitting ? <Loader2 style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} /> : <Check style={{ width: 14, height: 14 }} />}
+              {submitting ? 'Création...' : 'Créer la réunion'}
             </button>
           )}
         </div>
