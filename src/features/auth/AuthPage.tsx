@@ -6,7 +6,6 @@ import { ROUTES } from '../../constants'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 
-// ─── Circuit board SVG background ────────────────────────────────────────────
 function CircuitBoard() {
   return (
     <svg
@@ -15,7 +14,6 @@ function CircuitBoard() {
       preserveAspectRatio="xMidYMid slice"
       style={{ position: 'absolute', inset: 0, opacity: 0.07 }}
     >
-      {/* Horizontal traces */}
       <line x1="0" y1="80"  x2="800" y2="80"  stroke="#00E5A0" strokeWidth="0.5"/>
       <line x1="0" y1="160" x2="800" y2="160" stroke="#00E5A0" strokeWidth="0.5"/>
       <line x1="0" y1="240" x2="800" y2="240" stroke="#00E5A0" strokeWidth="0.3"/>
@@ -23,8 +21,6 @@ function CircuitBoard() {
       <line x1="0" y1="400" x2="800" y2="400" stroke="#00E5A0" strokeWidth="0.3"/>
       <line x1="0" y1="480" x2="800" y2="480" stroke="#00E5A0" strokeWidth="0.5"/>
       <line x1="0" y1="560" x2="800" y2="560" stroke="#00E5A0" strokeWidth="0.3"/>
-
-      {/* Vertical traces */}
       <line x1="100" y1="0" x2="100" y2="600" stroke="#00E5A0" strokeWidth="0.5"/>
       <line x1="200" y1="0" x2="200" y2="600" stroke="#00E5A0" strokeWidth="0.3"/>
       <line x1="300" y1="0" x2="300" y2="600" stroke="#00E5A0" strokeWidth="0.5"/>
@@ -32,8 +28,6 @@ function CircuitBoard() {
       <line x1="500" y1="0" x2="500" y2="600" stroke="#00E5A0" strokeWidth="0.5"/>
       <line x1="600" y1="0" x2="600" y2="600" stroke="#00E5A0" strokeWidth="0.3"/>
       <line x1="700" y1="0" x2="700" y2="600" stroke="#00E5A0" strokeWidth="0.5"/>
-
-      {/* Nodes / vias */}
       {[
         [100,80],[300,80],[500,80],[700,80],
         [200,160],[400,160],[600,160],
@@ -45,13 +39,9 @@ function CircuitBoard() {
       ].map(([x,y], i) => (
         <circle key={i} cx={x} cy={y} r="3" fill="none" stroke="#00E5A0" strokeWidth="0.8" />
       ))}
-
-      {/* Filled nodes (hot spots) */}
       {[[300,160],[500,320],[200,400],[600,80],[400,480]].map(([x,y], i) => (
         <circle key={`f${i}`} cx={x} cy={y} r="4" fill="#00E5A0" opacity="0.6" />
       ))}
-
-      {/* IC chip shapes */}
       <rect x="120" y="170" width="60" height="40" rx="2" fill="none" stroke="#00E5A0" strokeWidth="0.8"/>
       <line x1="130" y1="170" x2="130" y2="160" stroke="#00E5A0" strokeWidth="0.5"/>
       <line x1="145" y1="170" x2="145" y2="160" stroke="#00E5A0" strokeWidth="0.5"/>
@@ -59,7 +49,6 @@ function CircuitBoard() {
       <line x1="130" y1="210" x2="130" y2="220" stroke="#00E5A0" strokeWidth="0.5"/>
       <line x1="145" y1="210" x2="145" y2="220" stroke="#00E5A0" strokeWidth="0.5"/>
       <line x1="160" y1="210" x2="160" y2="220" stroke="#00E5A0" strokeWidth="0.5"/>
-
       <rect x="520" y="330" width="70" height="50" rx="2" fill="none" stroke="#00E5A0" strokeWidth="0.8"/>
       <line x1="530" y1="330" x2="530" y2="320" stroke="#00E5A0" strokeWidth="0.5"/>
       <line x1="548" y1="330" x2="548" y2="320" stroke="#00E5A0" strokeWidth="0.5"/>
@@ -67,20 +56,14 @@ function CircuitBoard() {
       <line x1="530" y1="380" x2="530" y2="390" stroke="#00E5A0" strokeWidth="0.5"/>
       <line x1="548" y1="380" x2="548" y2="390" stroke="#00E5A0" strokeWidth="0.5"/>
       <line x1="566" y1="380" x2="566" y2="390" stroke="#00E5A0" strokeWidth="0.5"/>
-
-      {/* Diagonal routing */}
       <path d="M300 80 L380 160" fill="none" stroke="#00E5A0" strokeWidth="0.5"/>
       <path d="M500 160 L600 80" fill="none" stroke="#00E5A0" strokeWidth="0.5"/>
       <path d="M200 320 L300 240" fill="none" stroke="#00E5A0" strokeWidth="0.5"/>
       <path d="M400 400 L500 320" fill="none" stroke="#00E5A0" strokeWidth="0.5"/>
-
-      {/* Capacitor symbols */}
       <line x1="640" y1="230" x2="660" y2="230" stroke="#00E5A0" strokeWidth="1"/>
       <line x1="640" y1="238" x2="660" y2="238" stroke="#00E5A0" strokeWidth="1"/>
       <line x1="650" y1="220" x2="650" y2="230" stroke="#00E5A0" strokeWidth="0.5"/>
       <line x1="650" y1="238" x2="650" y2="248" stroke="#00E5A0" strokeWidth="0.5"/>
-
-      {/* Resistor */}
       <rect x="340" y="435" width="30" height="12" rx="2" fill="none" stroke="#00E5A0" strokeWidth="0.8"/>
       <line x1="320" y1="441" x2="340" y2="441" stroke="#00E5A0" strokeWidth="0.5"/>
       <line x1="370" y1="441" x2="390" y2="441" stroke="#00E5A0" strokeWidth="0.5"/>
@@ -88,7 +71,6 @@ function CircuitBoard() {
   )
 }
 
-// ─── Animated scan line ───────────────────────────────────────────────────────
 function ScanLine() {
   return (
     <div style={{
@@ -100,7 +82,6 @@ function ScanLine() {
   )
 }
 
-// ─── Typing text ──────────────────────────────────────────────────────────────
 function TypingText({ texts }: { texts: string[] }) {
   const [idx, setIdx] = useState(0)
   const [displayed, setDisplayed] = useState('')
@@ -109,7 +90,6 @@ function TypingText({ texts }: { texts: string[] }) {
   useEffect(() => {
     const current = texts[idx % texts.length]
     let timeout: ReturnType<typeof setTimeout>
-
     if (phase === 'typing') {
       if (displayed.length < current.length) {
         timeout = setTimeout(() => setDisplayed(current.slice(0, displayed.length + 1)), 60)
@@ -137,7 +117,6 @@ function TypingText({ texts }: { texts: string[] }) {
   )
 }
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
 export function AuthPage() {
   const { session, loading } = useAuth()
   const [email, setEmail] = useState('')
@@ -174,40 +153,28 @@ export function AuthPage() {
       fontFamily: 'system-ui, sans-serif',
     }}>
       <style>{`
-        @keyframes scanline {
-          0% { top: -2px; }
-          100% { top: 100%; }
-        }
-        @keyframes blink {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0; }
-        }
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(16px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes pulse-ring {
-          0%   { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0,229,160,0.3); }
-          70%  { transform: scale(1);    box-shadow: 0 0 0 10px rgba(0,229,160,0); }
-          100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0,229,160,0); }
-        }
+        @keyframes scanline { 0% { top: -2px; } 100% { top: 100%; } }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse-ring { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0,229,160,0.3); } 70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0,229,160,0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0,229,160,0); } }
         @keyframes spin { to { transform: rotate(360deg); } }
         .field-wrap input:focus { outline: none; }
       `}</style>
 
-      {/* ── Circuit background ── */}
       <CircuitBoard />
       <ScanLine />
 
       {/* ── Left panel ── */}
       <div style={{
-        flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center',
-        padding: '48px 8% 48px 10%', position: 'relative', zIndex: 1,
+        flex: 1,
+        display: 'flex', flexDirection: 'column', justifyContent: 'center',
+        padding: '48px 56px',
+        position: 'relative', zIndex: 1,
         borderRight: '1px solid rgba(0,229,160,0.08)',
       }}>
         {/* Logo */}
-        <div style={{ animation: 'fadeUp 0.6s ease forwards' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+        <div style={{ marginBottom: 48, animation: 'fadeUp 0.6s ease forwards' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{
               width: 36, height: 36, background: '#00E5A0',
               borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -227,7 +194,7 @@ export function AuthPage() {
           </div>
         </div>
 
-        {/* Center copy */}
+        {/* Copy */}
         <div style={{ animation: 'fadeUp 0.6s 0.15s ease both' }}>
           <p style={{ fontSize: 11, color: '#00E5A0', fontFamily: "'DM Mono', monospace", letterSpacing: '0.15em', textTransform: 'uppercase', margin: '0 0 16px' }}>
             // Plateforme de gestion d'équipe
@@ -243,23 +210,21 @@ export function AuthPage() {
           <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.4)', margin: '0 0 32px', lineHeight: 1.6, maxWidth: 420 }}>
             Réunions, actions, parc auto, équipe — tout ce qui compte pour votre activité terrain, centralisé et accessible.
           </p>
-
-          {/* Live typing */}
           <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, color: 'rgba(255,255,255,0.3)', lineHeight: 1.8 }}>
             <span style={{ color: 'rgba(255,255,255,0.15)' }}>{'>'} </span>
             <TypingText texts={[
               'Gérer les réunions hebdo',
-              'Suivre les points d\'action',
+              "Suivre les points d'action",
               'Surveiller le parc véhicules',
-              'Piloter le baromètre équipe',
+              "Piloter le baromètre équipe",
               'Anticiper les inspections VGP',
               'Centraliser les consommables',
             ]} />
           </div>
         </div>
 
-        {/* Bottom badges */}
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', animation: 'fadeUp 0.6s 0.3s ease both' }}>
+        {/* Badges */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 48, animation: 'fadeUp 0.6s 0.3s ease both' }}>
           {['Logistique', 'Industrie', 'Terrain'].map(tag => (
             <span key={tag} style={{
               fontSize: 10, fontFamily: "'DM Mono', monospace", letterSpacing: '0.1em',
@@ -277,8 +242,10 @@ export function AuthPage() {
 
       {/* ── Right panel : form ── */}
       <div style={{
-        width: 460, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '48px 5% 48px 4%', position: 'relative', zIndex: 1,
+        width: 480, flexShrink: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '48px 48px',
+        position: 'relative', zIndex: 1,
       }}>
         <div style={{ width: '100%', animation: 'fadeUp 0.6s 0.1s ease both' }}>
 
@@ -286,16 +253,12 @@ export function AuthPage() {
           <div style={{
             background: 'rgba(10,14,20,0.95)',
             border: '1px solid rgba(0,229,160,0.15)',
-            borderRadius: 20,
-            padding: '36px 36px',
+            borderRadius: 20, padding: '36px 36px',
             backdropFilter: 'blur(20px)',
             boxShadow: '0 0 60px rgba(0,229,160,0.05), 0 24px 48px rgba(0,0,0,0.6)',
             position: 'relative', overflow: 'hidden',
           }}>
-            {/* Top accent line */}
             <div style={{ position: 'absolute', top: 0, left: 32, right: 32, height: 1, background: 'linear-gradient(90deg, transparent, #00E5A0, transparent)', opacity: 0.6 }} />
-
-            {/* Corner markers */}
             {[
               { top: 8, left: 8, borderTop: '1.5px solid #00E5A040', borderLeft: '1.5px solid #00E5A040' },
               { top: 8, right: 8, borderTop: '1.5px solid #00E5A040', borderRight: '1.5px solid #00E5A040' },
@@ -320,8 +283,7 @@ export function AuthPage() {
 
             {/* Form */}
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-              {/* Email field */}
+              {/* Email */}
               <div className="field-wrap">
                 <label style={{ display: 'block', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: focused === 'email' ? '#00E5A0' : 'rgba(255,255,255,0.3)', fontFamily: "'DM Mono', monospace", marginBottom: 6, transition: 'color 0.2s' }}>
                   Identifiant
@@ -346,7 +308,7 @@ export function AuthPage() {
                 </div>
               </div>
 
-              {/* Password field */}
+              {/* Password */}
               <div className="field-wrap">
                 <label style={{ display: 'block', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: focused === 'pass' ? '#00E5A0' : 'rgba(255,255,255,0.3)', fontFamily: "'DM Mono', monospace", marginBottom: 6, transition: 'color 0.2s' }}>
                   Mot de passe
@@ -387,18 +349,17 @@ export function AuthPage() {
                 onMouseEnter={e => { if (!busy) { (e.currentTarget as HTMLElement).style.background = '#00ffb3'; (e.currentTarget as HTMLElement).style.boxShadow = '0 0 30px rgba(0,229,160,0.4)' } }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = busy ? 'rgba(0,229,160,0.6)' : '#00E5A0'; (e.currentTarget as HTMLElement).style.boxShadow = busy ? 'none' : '0 0 20px rgba(0,229,160,0.25)' }}
               >
-                {busy
-                  ? <Loader2 style={{ width: 16, height: 16, animation: 'spin 1s linear infinite' }} />
-                  : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                }
+                {busy ? <Loader2 style={{ width: 16, height: 16, animation: 'spin 1s linear infinite' }} /> : (
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                )}
                 {busy ? 'Connexion...' : mode === 'login' ? 'Accéder au système' : 'Créer le compte'}
               </button>
             </form>
 
-            {/* Mode toggle */}
+            {/* Toggle */}
             <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid rgba(255,255,255,0.06)', textAlign: 'center' }}>
               <button onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'rgba(255,255,255,0.3)', fontFamily: "'DM Mono', monospace', transition: 'color 0.2s'" }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'rgba(255,255,255,0.3)', fontFamily: "'DM Mono', monospace", transition: 'color 0.2s' }}
                 onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = '#00E5A0')}
                 onMouseLeave={e => ((e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.3)')}>
                 {mode === 'login' ? "Pas de compte ? S'inscrire" : 'Déjà un compte ? Se connecter'}
@@ -406,7 +367,6 @@ export function AuthPage() {
             </div>
           </div>
 
-          {/* Footer */}
           <p style={{ textAlign: 'center', fontSize: 10, color: 'rgba(255,255,255,0.12)', marginTop: 20, fontFamily: "'DM Mono', monospace", letterSpacing: '0.06em' }}>
             RÉUNIONS GT v3.0 · SYSTÈME SÉCURISÉ · 🇫🇷
           </p>
@@ -416,18 +376,12 @@ export function AuthPage() {
   )
 }
 
-// ─── Auth Guard ───────────────────────────────────────────────────────────────
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth()
-
   if (loading) return (
     <div style={{ minHeight: '100vh', background: '#050709', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-        <div style={{
-          width: 36, height: 36, background: '#00E5A0', borderRadius: 8,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          animation: 'pulse-ring 2.5s ease-in-out infinite',
-        }}>
+        <div style={{ width: 36, height: 36, background: '#00E5A0', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'pulse-ring 2.5s ease-in-out infinite' }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#050709" strokeWidth="2.5" strokeLinecap="round">
             <rect x="3" y="4" width="18" height="18" rx="2"/>
             <line x1="16" y1="2" x2="16" y2="6"/>
@@ -435,13 +389,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
             <line x1="3" y1="10" x2="21" y2="10"/>
           </svg>
         </div>
-        <p style={{ fontSize: 11, color: '#00E5A0', fontFamily: "'DM Mono', monospace", letterSpacing: '0.12em' }}>
-          CHARGEMENT...
-        </p>
+        <p style={{ fontSize: 11, color: '#00E5A0', fontFamily: "'DM Mono', monospace", letterSpacing: '0.12em' }}>CHARGEMENT...</p>
       </div>
     </div>
   )
-
   if (!session) return <Navigate to={ROUTES.LOGIN} replace />
   return <>{children}</>
 }
