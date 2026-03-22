@@ -164,13 +164,16 @@ export function AuthPage() {
       <CircuitBoard />
       <ScanLine />
 
+      {/* Wrapper centré — fond reste full-screen */}
+      <div style={{ display: 'flex', width: '100%', maxWidth: 1080, margin: '0 auto', position: 'relative', zIndex: 1 }}>
+
       {/* ── Left panel ── */}
       <div style={{
         flex: 1,
         display: 'flex', flexDirection: 'column', justifyContent: 'center',
         alignItems: 'flex-end',                  /* colle le contenu vers le formulaire */
         padding: '48px 64px 48px 48px',
-        position: 'relative', zIndex: 1,
+        position: 'relative',
         borderRight: '1px solid rgba(0,229,160,0.08)',
       }}>
         {/* Contenu limité en largeur pour rester proche du formulaire */}
@@ -249,7 +252,7 @@ export function AuthPage() {
         width: 480, flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: '48px 48px',
-        position: 'relative', zIndex: 1,
+        position: 'relative',
       }}>
         <div style={{ width: '100%', animation: 'fadeUp 0.6s 0.1s ease both' }}>
 
@@ -376,6 +379,7 @@ export function AuthPage() {
           </p>
         </div>
       </div>
+      </div>{/* fin wrapper centré */}
     </div>
   )
 }
