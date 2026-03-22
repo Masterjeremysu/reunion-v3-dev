@@ -14,6 +14,7 @@ import { ConsumablesPage } from './features/consumables/ConsumablesPage'
 import { VehiclesPage } from './features/vehicles/VehiclesPage'
 import { MoodPage } from './features/mood/MoodPage'
 import { SchedulePage } from './features/schedule/SchedulePage'
+import { LeavePage } from './features/leaves/LeavePage'
 
 export default function App() {
   return (
@@ -37,6 +38,7 @@ export default function App() {
             <Route path={ROUTES.VEHICLES}     element={<VehiclesPage />} />
             <Route path={ROUTES.MOOD}         element={<MoodPage />} />
             <Route path={ROUTES.SCHEDULE}     element={<SchedulePage />} />
+            <Route path="/leaves" element={<LeavePage />} />
           </Route>
         </Routes>
       </BrowserRouter>
