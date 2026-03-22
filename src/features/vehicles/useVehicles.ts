@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import { QK } from '../../constants'
-import type { VehicleInsert, VehicleInspectionInsert } from '../../types/app'
 import { toast } from 'sonner'
 
 export function useVehicles() {
@@ -48,12 +47,21 @@ export function useVehicleInspections(vehicleId: string) {
 export function useCreateVehicle() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (payload: VehicleInsert) => {
-      const { data, error } = await supabase.from('vehicles').insert(payload).select().single()
+    mutationFn: async (payload: any) => {
+      // Récupérer l'user connecté pour satisfaire la RLS
+      const { data: { user } } = await supabase.auth.getUser()
+      const { data, error } = await supabase
+        .from('vehicles')
+        .insert({ ...payload, user_id: user?.id ?? null })
+        .select()
+        .single()
       if (error) throw error
       return data
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: QK.VEHICLES }); toast.success('Véhicule ajouté') },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: QK.VEHICLES })
+      toast.success('Véhicule ajouté')
+    },
     onError: (e: any) => toast.error(e.message),
   })
 }
@@ -61,15 +69,18 @@ export function useCreateVehicle() {
 export function useCreateInspection() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (payload: VehicleInspectionInsert) => {
-      const { data, error } = await supabase.from('vehicle_inspections').insert(payload).select().single()
+    mutationFn: async (payload: any) => {
+      const { data, error } = await supabase
+        .from('vehicle_inspections')
+        .insert(payload)
+        .select()
+        .single()
       if (error) throw error
       return data
     },
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: QK.INSPECTIONS })
       qc.invalidateQueries({ queryKey: QK.VEHICLE_INSPECTIONS(data.vehicle_id) })
-      qc.invalidateQueries({ queryKey: QK.DASHBOARD })
       toast.success('Inspection ajoutée')
     },
     onError: (e: any) => toast.error(e.message),
@@ -79,15 +90,19 @@ export function useCreateInspection() {
 export function useUpdateInspection() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, ...payload }: Partial<VehicleInspectionInsert> & { id: string }) => {
-      const { data, error } = await supabase.from('vehicle_inspections').update(payload).eq('id', id).select().single()
+    mutationFn: async ({ id, ...payload }: any) => {
+      const { data, error } = await supabase
+        .from('vehicle_inspections')
+        .update(payload)
+        .eq('id', id)
+        .select()
+        .single()
       if (error) throw error
       return data
     },
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: QK.INSPECTIONS })
       qc.invalidateQueries({ queryKey: QK.VEHICLE_INSPECTIONS(data.vehicle_id) })
-      qc.invalidateQueries({ queryKey: QK.DASHBOARD })
       toast.success('Inspection mise à jour')
     },
     onError: (e: any) => toast.error(e.message),
