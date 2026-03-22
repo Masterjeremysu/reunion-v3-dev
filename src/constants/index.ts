@@ -10,6 +10,7 @@ export const ROUTES = {
   VEHICLES: '/vehicles',
   MOOD: '/mood',
   SCHEDULE: '/schedule',
+  LEAVES: '/leaves',
 } as const
 
 export const QK = {
