@@ -172,6 +172,7 @@ export function AuthPage() {
       minHeight: '100vh', background: '#050709',
       display: 'flex', position: 'relative', overflow: 'hidden',
       fontFamily: 'system-ui, sans-serif',
+      alignItems: 'stretch',
     }}>
       <style>{`
         @keyframes scanline {
@@ -204,6 +205,7 @@ export function AuthPage() {
         flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
         padding: '48px 56px', position: 'relative', zIndex: 1,
         borderRight: '1px solid rgba(0,229,160,0.08)',
+        maxWidth: 640,
       }}>
         {/* Logo */}
         <div style={{ animation: 'fadeUp 0.6s ease forwards' }}>
@@ -260,7 +262,7 @@ export function AuthPage() {
 
         {/* Bottom badges */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', animation: 'fadeUp 0.6s 0.3s ease both' }}>
-          {['Logistique', 'Industrie', 'Terrain', 'PME'].map(tag => (
+          {['Logistique', 'Industrie', 'Terrain'].map(tag => (
             <span key={tag} style={{
               fontSize: 10, fontFamily: "'DM Mono', monospace", letterSpacing: '0.1em',
               color: 'rgba(0,229,160,0.6)', border: '1px solid rgba(0,229,160,0.15)',
@@ -277,8 +279,8 @@ export function AuthPage() {
 
       {/* ── Right panel : form ── */}
       <div style={{
-        width: 480, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '48px 48px', position: 'relative', zIndex: 1,
+        width: 440, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '48px 40px', position: 'relative', zIndex: 1,
       }}>
         <div style={{ width: '100%', animation: 'fadeUp 0.6s 0.1s ease both' }}>
 
