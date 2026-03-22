@@ -1,4 +1,6 @@
 import { useState, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { supabase } from '../../lib/supabase'
 import { useMeetings, useDeleteMeeting } from './useMeetings'
 import { useActions, useCreateAction } from '../actions/useActions'
 import { useColleagues } from '../colleagues/useColleagues'
@@ -13,6 +15,30 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
+
+// ─── Hook cr_items avec attributions ─────────────────────────────────────────
+function useCRItems(meetingId: string | null) {
+  return useQuery({
+    queryKey: ['cr_items', meetingId],
+    enabled: !!meetingId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('cr_items')
+        .select('*, colleagues(id, name, post)')
+        .eq('meeting_id', meetingId!)
+        .order('order_index', { ascending: true })
+      if (error) return [] // table peut ne pas exister encore
+      return data ?? []
+    },
+    staleTime: 1000 * 60 * 2,
+  })
+}
+
+// Map category -> clé CR_CONF
+const CAT_MAP: Record<string, string> = {
+  success: 'successes', failure: 'failures',
+  sensitive: 'sensitive_points', relational: 'relational_points',
+}
 
 // ─── Data helpers ─────────────────────────────────────────────────────────────
 function isUUID(s: string) {
@@ -239,6 +265,20 @@ function DetailPanel({ meeting, colleagues, getColleague, onDelete, crSearch, se
   const d = new Date(meeting.date)
   const participantIds = meeting.colleagues_ids ?? []
 
+  // cr_items avec attributions (nouvelle table)
+  const { data: crItemsRaw } = useCRItems(meeting.id)
+
+  // Index contenu -> collègue pour affichage badge attribution
+  const crAttributionMap = useMemo(() => {
+    const map: Record<string, any> = {}
+    ;(crItemsRaw ?? []).forEach((item: any) => {
+      if (item.content && item.colleagues) {
+        map[item.content.trim()] = item.colleagues
+      }
+    })
+    return map
+  }, [crItemsRaw])
+
   // Stats
   const stats = CR_CONF.map(c => ({ ...c, items: parseItems(meeting[c.key]) }))
   const totalPoints = stats.reduce((a, b) => a + b.items.length, 0)
@@ -382,11 +422,20 @@ function DetailPanel({ meeting, colleagues, getColleague, onDelete, crSearch, se
                   <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {items.length === 0 && crSearch ? (
                       <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)', fontStyle: 'italic', margin: 0 }}>Aucun résultat</p>
-                    ) : items.map((item, i) => (
-                      <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                    ) : items.map((item, i) => {
+                      const attributed = crAttributionMap[item.trim()]
+                      const initials = attributed?.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) ?? ''
+                      const avatarColors = [
+                        { bg: '#1D9E7520', color: '#5DCAA5' }, { bg: '#7F77DD20', color: '#AFA9EC' },
+                        { bg: '#378ADD20', color: '#85B7EB' }, { bg: '#EF9F2720', color: '#FAC775' },
+                        { bg: '#E24B4A20', color: '#F09595' }, { bg: '#D4537E20', color: '#ED93B1' },
+                      ]
+                      const ac = attributed ? avatarColors[attributed.name.charCodeAt(0) % avatarColors.length] : null
+                      return (
+                      <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '4px 0', borderBottom: i < items.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
                         <div style={{ width: 4, height: 4, borderRadius: '50%', background: conf.color, flexShrink: 0, marginTop: 6, opacity: 0.8 }} />
                         <p style={{
-                          fontSize: 12, color: 'rgba(255,255,255,0.75)', margin: 0, lineHeight: 1.5,
+                          flex: 1, fontSize: 12, color: 'rgba(255,255,255,0.75)', margin: 0, lineHeight: 1.5,
                           ...(crSearch && item.toLowerCase().includes(crSearch.toLowerCase()) ? {
                             background: `${conf.color}25`, borderRadius: 4, padding: '0 3px'
                           } : {})
@@ -396,8 +445,20 @@ function DetailPanel({ meeting, colleagues, getColleague, onDelete, crSearch, se
                             : item
                           }
                         </p>
+                        {attributed && ac && (
+                          <div title={`Attribué à ${attributed.name}`}
+                            style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0, padding: '1px 7px', borderRadius: 20, background: ac.bg, border: `1px solid ${ac.color}30` }}>
+                            <div style={{ width: 14, height: 14, borderRadius: '50%', background: ac.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, fontWeight: 700, color: ac.color, flexShrink: 0 }}>
+                              {initials}
+                            </div>
+                            <span style={{ fontSize: 10, color: ac.color, fontFamily: 'monospace', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                              {attributed.name.split(' ')[0]}
+                            </span>
+                          </div>
+                        )}
                       </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               )
