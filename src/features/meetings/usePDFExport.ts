@@ -1,4 +1,3 @@
-import { supabase } from '../../lib/supabase'
 import { toast } from 'sonner'
 
 /**
@@ -15,8 +14,6 @@ export async function exportMeetingPDF(meeting: any, colleagues: any[], crItems:
     const colmap: Record<string, any> = {}
     colleagues.forEach(c => { colmap[c.id] = c })
 
-    // Tentative Edge Function
-    const { data: { session } } = await supabase.auth.getSession()
     const payload = {
       title:            meeting.title,
       date:             meeting.date,
@@ -31,27 +28,7 @@ export async function exportMeetingPDF(meeting: any, colleagues: any[], crItems:
       actions,
     }
 
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-cr-pdf`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session?.access_token}`,
-          },
-          body: JSON.stringify(payload),
-        }
-      )
-      if (res.ok) {
-        const blob = await res.blob()
-        downloadBlob(blob, `CR-${meeting.title.replace(/[^a-zA-Z0-9]/g, '-')}.pdf`)
-        toast.success('PDF téléchargé !', { id: toastId })
-        return
-      }
-    } catch {}
-
-    // Fallback : impression HTML premium
+    // Impression HTML native — fonctionne sans Edge Function
     printHTMLFallback(payload, colmap, crItems)
     toast.success('Impression lancée !', { id: toastId })
   } catch (err: any) {
