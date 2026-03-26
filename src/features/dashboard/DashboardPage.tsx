@@ -1,4 +1,12 @@
-import { useMemo, useState } from 'react'
+// ─── IMPORTANT — Installation requise ─────────────────────────────────────────
+// npm install react-grid-layout
+// npm install -D @types/react-grid-layout
+// ──────────────────────────────────────────────────────────────────────────────
+
+import { useMemo, useState, useCallback } from 'react'
+import { Responsive, WidthProvider } from 'react-grid-layout'
+import 'react-grid-layout/css/styles.css'
+import 'react-resizable/css/styles.css'
 import { useMeetings } from '../meetings/useMeetings'
 import { useActions } from '../actions/useActions'
 import { useColleagues } from '../colleagues/useColleagues'
@@ -12,7 +20,7 @@ import {
   CalendarDays, CheckSquare, Car, TrendingUp,
   AlertTriangle, Flame, ChevronRight, Clock,
   Activity, Zap, ArrowUpRight, ArrowDownRight,
-  BarChart2, Target, Award, Users
+  BarChart2, Target, Award, Users, Lock, Unlock, RotateCcw
 } from 'lucide-react'
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip,
@@ -28,12 +36,69 @@ import { fr } from 'date-fns/locale'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 
+const ResponsiveGridLayout = WidthProvider(Responsive)
+
+// ─── LocalStorage key ────────────────────────────────────────────────────────
+const LAYOUT_STORAGE_KEY = 'dashboard_grid_layout_v1'
+
+// ─── Default layout ───────────────────────────────────────────────────────────
+// Grille de 12 colonnes. Chaque widget : { i: id, x, y, w, h, minW, minH }
+const DEFAULT_LAYOUT = {
+  lg: [
+    { i: 'activity',    x: 0,  y: 0, w: 4, h: 6, minW: 3, minH: 4 },
+    { i: 'cr',          x: 0,  y: 6, w: 4, h: 6, minW: 3, minH: 4 },
+    { i: 'perf',        x: 4,  y: 0, w: 4, h: 5, minW: 3, minH: 3 },
+    { i: 'mood',        x: 4,  y: 5, w: 4, h: 5, minW: 3, minH: 3 },
+    { i: 'meetings',    x: 4,  y: 10, w: 4, h: 5, minW: 3, minH: 3 },
+    { i: 'alerts',      x: 8,  y: 0, w: 4, h: 5, minW: 3, minH: 3 },
+    { i: 'leaves',      x: 8,  y: 5, w: 4, h: 5, minW: 3, minH: 3 },
+    { i: 'urgentact',   x: 8,  y: 10, w: 4, h: 4, minW: 3, minH: 3 },
+    { i: 'vehicles',    x: 8,  y: 14, w: 4, h: 4, minW: 3, minH: 3 },
+  ],
+  md: [
+    { i: 'activity',    x: 0, y: 0,  w: 6, h: 6, minW: 3, minH: 4 },
+    { i: 'cr',          x: 0, y: 6,  w: 6, h: 6, minW: 3, minH: 4 },
+    { i: 'perf',        x: 6, y: 0,  w: 4, h: 5, minW: 3, minH: 3 },
+    { i: 'mood',        x: 6, y: 5,  w: 4, h: 5, minW: 3, minH: 3 },
+    { i: 'meetings',    x: 6, y: 10, w: 4, h: 5, minW: 3, minH: 3 },
+    { i: 'alerts',      x: 0, y: 12, w: 5, h: 5, minW: 3, minH: 3 },
+    { i: 'leaves',      x: 5, y: 12, w: 5, h: 5, minW: 3, minH: 3 },
+    { i: 'urgentact',   x: 0, y: 17, w: 5, h: 4, minW: 3, minH: 3 },
+    { i: 'vehicles',    x: 5, y: 17, w: 5, h: 4, minW: 3, minH: 3 },
+  ],
+  sm: [
+    { i: 'activity',    x: 0, y: 0,  w: 6, h: 6, minW: 3, minH: 4 },
+    { i: 'cr',          x: 0, y: 6,  w: 6, h: 6, minW: 3, minH: 4 },
+    { i: 'perf',        x: 0, y: 12, w: 6, h: 5, minW: 3, minH: 3 },
+    { i: 'mood',        x: 0, y: 17, w: 6, h: 5, minW: 3, minH: 3 },
+    { i: 'meetings',    x: 0, y: 22, w: 6, h: 5, minW: 3, minH: 3 },
+    { i: 'alerts',      x: 0, y: 27, w: 6, h: 5, minW: 3, minH: 3 },
+    { i: 'leaves',      x: 0, y: 32, w: 6, h: 5, minW: 3, minH: 3 },
+    { i: 'urgentact',   x: 0, y: 37, w: 6, h: 4, minW: 3, minH: 3 },
+    { i: 'vehicles',    x: 0, y: 41, w: 6, h: 4, minW: 3, minH: 3 },
+  ],
+}
+
+function loadLayout() {
+  try {
+    const saved = localStorage.getItem(LAYOUT_STORAGE_KEY)
+    if (saved) return JSON.parse(saved)
+  } catch {}
+  return DEFAULT_LAYOUT
+}
+
+function saveLayout(layouts: any) {
+  try {
+    localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(layouts))
+  } catch {}
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 function isDueSoon(d: string, days = 45) {
   const now = new Date()
   return isAfter(new Date(d), now) && isBefore(new Date(d), addDays(now, days))
 }
 
-// ─── Leave colors ─────────────────────────────────────────────────────────────
 const LEAVE_COLORS: Record<string, string> = {
   conges_payes: '#1D9E75', rtt: '#378ADD', maladie: '#EF9F27',
   arret_travail: '#E24B4A', conge_sans_solde: '#8b90a4',
@@ -44,7 +109,6 @@ const LEAVE_LABELS: Record<string, string> = {
   conge_sans_solde: 'CSS', evenement_familial: 'Famille', formation: 'Formation', autre: 'Autre',
 }
 
-// ─── Hooks ────────────────────────────────────────────────────────────────────
 function useUpcomingLeaves() {
   return useQuery({
     queryKey: ['leaves', 'upcoming'],
@@ -108,8 +172,7 @@ function KpiCard({ label, value, delta, deltaLabel, color, icon: Icon, onClick, 
       {delta !== undefined && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 8 }}>
           {delta > 0 ? <ArrowUpRight style={{ width: 12, height: 12, color: '#1D9E75' }} /> :
-           delta < 0 ? <ArrowDownRight style={{ width: 12, height: 12, color: '#E24B4A' }} /> :
-           null}
+           delta < 0 ? <ArrowDownRight style={{ width: 12, height: 12, color: '#E24B4A' }} /> : null}
           <span style={{ fontSize: 11, color: delta > 0 ? '#1D9E75' : delta < 0 ? '#E24B4A' : '#565c75', fontFamily: 'monospace' }}>
             {delta > 0 ? `+${delta}` : delta} {deltaLabel}
           </span>
@@ -217,40 +280,83 @@ function LeavesWidget({ onNavigate }: { onNavigate: () => void }) {
   )
 
   return (
+    <>
+      <SectionTitle action="Gérer" onAction={onNavigate}>Absences & Congés</SectionTitle>
+      <div style={{ overflowY: 'auto', flex: 1 }}>
+        {todayAbsent.length > 0 && (
+          <div style={{ marginBottom: 12 }}>
+            <p style={{ fontSize: 10, color: '#FAC775', fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF9F27', display: 'inline-block', animation: 'pulse 2s ease-in-out infinite' }} />
+              Absent{todayAbsent.length > 1 ? 's' : ''} aujourd'hui · {todayAbsent.length}
+            </p>
+            {todayAbsent.map(l => <LeaveRow key={l.id} leave={l} />)}
+          </div>
+        )}
+        {thisWeek.length > 0 && (
+          <div style={{ marginBottom: 10 }}>
+            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 6px' }}>Cette semaine</p>
+            {thisWeek.map(l => <LeaveRow key={l.id} leave={l} />)}
+          </div>
+        )}
+        {nextWeek.length > 0 && (
+          <div>
+            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 6px' }}>Semaine prochaine</p>
+            {nextWeek.map(l => <LeaveRow key={l.id} leave={l} dimmed />)}
+          </div>
+        )}
+        {!leaves?.length && (
+          <p style={{ fontSize: 12, color: '#1D9E75', textAlign: 'center', padding: '8px 0', fontFamily: 'monospace' }}>✓ Tout le monde présent cette semaine</p>
+        )}
+      </div>
+    </>
+  )
+}
+
+// ─── Widget wrapper avec drag handle ─────────────────────────────────────────
+function Widget({ children, editMode, borderColor }: {
+  children: React.ReactNode
+  editMode: boolean
+  borderColor?: string
+}) {
+  return (
     <div style={{
       background: 'rgba(255,255,255,0.02)',
-      border: `1px solid ${todayAbsent.length > 0 ? '#EF9F2725' : 'rgba(255,255,255,0.06)'}`,
-      borderRadius: 14, padding: '18px 20px',
+      border: `1px solid ${borderColor ?? 'rgba(255,255,255,0.06)'}`,
+      borderRadius: 14,
+      padding: '18px 20px',
+      height: '100%',
+      boxSizing: 'border-box',
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden',
+      position: 'relative',
+      transition: 'border-color 0.2s',
+      ...(editMode ? {
+        borderColor: 'rgba(55,138,221,0.35)',
+        boxShadow: '0 0 0 1px rgba(55,138,221,0.1)',
+      } : {}),
     }}>
-      <SectionTitle action="Gérer" onAction={onNavigate}>Absences & Congés</SectionTitle>
-
-      {todayAbsent.length > 0 && (
-        <div style={{ marginBottom: 12 }}>
-          <p style={{ fontSize: 10, color: '#FAC775', fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: 5 }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF9F27', display: 'inline-block', animation: 'pulse 2s ease-in-out infinite' }} />
-            Absent{todayAbsent.length > 1 ? 's' : ''} aujourd'hui · {todayAbsent.length}
-          </p>
-          {todayAbsent.map(l => <LeaveRow key={l.id} leave={l} />)}
+      {editMode && (
+        <div
+          className="drag-handle"
+          title="Glisser pour déplacer"
+          style={{
+            position: 'absolute', top: 8, right: 8,
+            width: 20, height: 20,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'grab', opacity: 0.4,
+            background: 'rgba(55,138,221,0.15)',
+            borderRadius: 5,
+            zIndex: 10,
+          }}>
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="rgba(255,255,255,0.8)">
+            <circle cx="2" cy="2" r="1.2"/><circle cx="8" cy="2" r="1.2"/>
+            <circle cx="2" cy="5" r="1.2"/><circle cx="8" cy="5" r="1.2"/>
+            <circle cx="2" cy="8" r="1.2"/><circle cx="8" cy="8" r="1.2"/>
+          </svg>
         </div>
       )}
-
-      {thisWeek.length > 0 && (
-        <div style={{ marginBottom: 10 }}>
-          <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 6px' }}>Cette semaine</p>
-          {thisWeek.map(l => <LeaveRow key={l.id} leave={l} />)}
-        </div>
-      )}
-
-      {nextWeek.length > 0 && (
-        <div>
-          <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 6px' }}>Semaine prochaine</p>
-          {nextWeek.map(l => <LeaveRow key={l.id} leave={l} dimmed />)}
-        </div>
-      )}
-
-      {!leaves?.length && (
-        <p style={{ fontSize: 12, color: '#1D9E75', textAlign: 'center', padding: '8px 0', fontFamily: 'monospace' }}>✓ Tout le monde présent cette semaine</p>
-      )}
+      {children}
     </div>
   )
 }
@@ -267,7 +373,20 @@ export function DashboardPage() {
   const { data: moods } = useMood()
   const { data: leaves } = useUpcomingLeaves()
 
+  const [editMode, setEditMode] = useState(false)
+  const [layouts, setLayouts] = useState<any>(loadLayout)
+
   const loading = mLoading || aLoading
+
+  const handleLayoutChange = useCallback((_layout: any, allLayouts: any) => {
+    setLayouts(allLayouts)
+    saveLayout(allLayouts)
+  }, [])
+
+  const handleResetLayout = useCallback(() => {
+    setLayouts(DEFAULT_LAYOUT)
+    saveLayout(DEFAULT_LAYOUT)
+  }, [])
 
   const stats = useMemo(() => {
     const now = new Date()
@@ -357,18 +476,26 @@ export function DashboardPage() {
   const MOOD_EMOJI = ['', '😔', '😕', '😐', '🙂', '😄']
   const MOOD_COLOR = ['', '#E24B4A', '#EF9F27', '#8b90a4', '#378ADD', '#1D9E75']
 
+  const now = new Date()
+  const greeting = now.getHours() < 12 ? 'Bonjour' : now.getHours() < 18 ? 'Bon après-midi' : 'Bonsoir'
+
   if (loading) return (
     <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0a0c12' }}>
       <Spinner />
     </div>
   )
 
-  const now = new Date()
-  const greeting = now.getHours() < 12 ? 'Bonjour' : now.getHours() < 18 ? 'Bon après-midi' : 'Bonsoir'
-
   return (
     <div style={{ background: '#0a0c12', minHeight: '100vh', overflowY: 'auto' }}>
-      <style>{`@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.85)}}`}</style>
+      <style>{`
+        @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.85)}}
+        .react-grid-item.react-grid-placeholder { background: rgba(55,138,221,0.12) !important; border: 1px dashed rgba(55,138,221,0.4) !important; border-radius: 14px !important; }
+        .react-resizable-handle { opacity: 0; transition: opacity 0.2s; }
+        .react-grid-item:hover .react-resizable-handle { opacity: 0.5; }
+        .react-resizable-handle::after { border-color: #378ADD !important; }
+        .drag-handle { cursor: grab !important; }
+        .drag-handle:active { cursor: grabbing !important; }
+      `}</style>
 
       {/* ── Header ── */}
       <div style={{ padding: '24px 28px 20px', background: 'linear-gradient(180deg, rgba(29,158,117,0.06) 0%, transparent 100%)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
@@ -387,13 +514,39 @@ export function DashboardPage() {
               }
             </p>
           </div>
-          <button onClick={() => navigate(ROUTES.MEETINGS)}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#1D9E75', border: 'none', borderRadius: 10, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-            <CalendarDays style={{ width: 14, height: 14 }} /> Nouvelle réunion
-          </button>
+
+          {/* Actions header */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {editMode && (
+              <button
+                onClick={handleResetLayout}
+                title="Réinitialiser la disposition"
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>
+                <RotateCcw style={{ width: 13, height: 13 }} /> Réinitialiser
+              </button>
+            )}
+            <button
+              onClick={() => setEditMode(v => !v)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
+                background: editMode ? 'rgba(55,138,221,0.15)' : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${editMode ? 'rgba(55,138,221,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                borderRadius: 10, color: editMode ? '#378ADD' : 'rgba(255,255,255,0.4)',
+                fontSize: 12, fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s',
+              }}>
+              {editMode
+                ? <><Lock style={{ width: 13, height: 13 }} /> Verrouiller</>
+                : <><Unlock style={{ width: 13, height: 13 }} /> Organiser</>
+              }
+            </button>
+            <button onClick={() => navigate(ROUTES.MEETINGS)}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#1D9E75', border: 'none', borderRadius: 10, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+              <CalendarDays style={{ width: 14, height: 14 }} /> Nouvelle réunion
+            </button>
+          </div>
         </div>
 
-        {/* KPI row */}
+        {/* KPI row — reste fixe, hors grille */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12 }}>
           <KpiCard label="Réunions ce mois" value={stats.meetingsThisMonth} delta={stats.meetingDelta} deltaLabel="vs mois dernier" color="#1D9E75" icon={CalendarDays} onClick={() => navigate(ROUTES.MEETINGS)} />
           <KpiCard label="Actions ouvertes" value={stats.openActions} delta={-stats.lateActions} deltaLabel="en retard" color={stats.lateActions > 0 ? '#E24B4A' : '#378ADD'} icon={CheckSquare} onClick={() => navigate(ROUTES.ACTIONS)} critical={stats.lateActions > 0} />
@@ -401,101 +554,125 @@ export function DashboardPage() {
           <KpiCard label="Inspections dues" value={stats.expiredInspections + stats.soonInspections} delta={-stats.expiredInspections} deltaLabel="expirées" color={stats.expiredInspections > 0 ? '#E24B4A' : '#EF9F27'} icon={Car} onClick={() => navigate(ROUTES.VEHICLES)} critical={stats.expiredInspections > 0} />
           <KpiCard label="Absents aujourd'hui" value={stats.todayAbsent || '✓'} color={stats.todayAbsent > 0 ? '#EF9F27' : '#1D9E75'} icon={Users} onClick={() => navigate('/leaves')} critical={stats.todayAbsent > 0} />
         </div>
+
+        {/* Bandeau mode édition */}
+        {editMode && (
+          <div style={{ marginTop: 12, padding: '8px 14px', background: 'rgba(55,138,221,0.08)', border: '1px solid rgba(55,138,221,0.2)', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#378ADD', animation: 'pulse 2s ease-in-out infinite', flexShrink: 0 }} />
+            <span style={{ fontSize: 12, color: '#378ADD', fontFamily: 'monospace' }}>
+              Mode organisation actif — glissez les widgets par la poignée ⋮⋮, redimensionnez par le coin
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* ── Main grid ── */}
-      <div style={{ padding: '20px 28px', display: 'grid', gridTemplateColumns: '1fr 1fr 320px', gap: 16 }}>
-
-        {/* Col 1 */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-          {/* Activity chart */}
-          <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: '18px 20px' }}>
-            <SectionTitle>Activité — 8 dernières semaines</SectionTitle>
-            <ResponsiveContainer width="100%" height={180}>
-              <AreaChart data={weeklyData} margin={{ top: 4, right: 0, bottom: 0, left: -28 }}>
-                <defs>
-                  <linearGradient id="gM" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#1D9E75" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#1D9E75" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="gA" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#378ADD" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#378ADD" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="week" tick={{ fill: '#565c75', fontSize: 10, fontFamily: 'monospace' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: '#565c75', fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                <Tooltip content={<CustomTooltip />} />
-                <Area type="monotone" dataKey="réunions" stroke="#1D9E75" strokeWidth={2} fill="url(#gM)" dot={false} />
-                <Area type="monotone" dataKey="actions" stroke="#378ADD" strokeWidth={1.5} fill="url(#gA)" dot={false} strokeDasharray="4 2" />
-              </AreaChart>
-            </ResponsiveContainer>
-            <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
-              {[['#1D9E75', 'Réunions'], ['#378ADD', 'Actions']].map(([c, l]) => (
-                <span key={l} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace' }}>
-                  <span style={{ width: 16, height: 2, background: c, borderRadius: 1, display: 'inline-block' }} />{l}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* CR breakdown */}
-          <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: '18px 20px' }}>
-            <SectionTitle>Analyse CR — 20 dernières réunions</SectionTitle>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {[
-                { label: 'Succès', value: crStats.successes, color: '#1D9E75' },
-                { label: 'Défauts', value: crStats.failures, color: '#E24B4A' },
-                { label: 'Sensibles', value: crStats.sensitive, color: '#EF9F27' },
-                { label: 'Relationnels', value: crStats.relational, color: '#7F77DD' },
-              ].map(s => {
-                const total = crStats.successes + crStats.failures + crStats.sensitive + crStats.relational
-                const pct = total > 0 ? Math.round((s.value / total) * 100) : 0
-                return (
-                  <div key={s.label} style={{ background: `${s.color}08`, border: `1px solid ${s.color}20`, borderRadius: 10, padding: '12px 14px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                      <span style={{ fontSize: 11, color: s.color, fontFamily: 'monospace', fontWeight: 600 }}>{s.label}</span>
-                      <span style={{ fontSize: 10, color: `${s.color}80`, fontFamily: 'monospace' }}>{pct}%</span>
-                    </div>
-                    <span style={{ fontSize: 26, fontWeight: 800, color: '#fff', fontFamily: 'monospace' }}>{s.value}</span>
-                    <div style={{ marginTop: 6, height: 3, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${pct}%`, background: s.color, borderRadius: 2, transition: 'width 0.8s ease' }} />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Col 2 */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-          {/* Team performance */}
-          {colleaguePerf.length > 0 && (
-            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: '18px 20px' }}>
-              <SectionTitle action="Voir équipe" onAction={() => navigate(ROUTES.COLLEAGUES)}>Performance équipe</SectionTitle>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {colleaguePerf.map((c, i) => (
-                  <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', fontFamily: 'monospace', width: 14, textAlign: 'right', flexShrink: 0 }}>{i + 1}</span>
-                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', width: 72, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
-                    <div style={{ flex: 1, height: 6, background: 'rgba(255,255,255,0.05)', borderRadius: 3, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${c.rate}%`, background: c.rate >= 80 ? '#1D9E75' : c.rate >= 50 ? '#EF9F27' : '#E24B4A', borderRadius: 3, transition: 'width 0.6s ease' }} />
-                    </div>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: c.rate >= 80 ? '#1D9E75' : c.rate >= 50 ? '#EF9F27' : '#E24B4A', fontFamily: 'monospace', width: 36, textAlign: 'right', flexShrink: 0 }}>{c.rate}%</span>
-                    {c.late > 0 && <span style={{ fontSize: 9, color: '#F09595', background: '#E24B4A15', borderRadius: 20, padding: '1px 5px', fontFamily: 'monospace' }}>+{c.late}</span>}
-                  </div>
+      {/* ── Grille modulable ── */}
+      <div style={{ padding: '20px 20px' }}>
+        <ResponsiveGridLayout
+          className="layout"
+          layouts={layouts}
+          onLayoutChange={handleLayoutChange}
+          breakpoints={{ lg: 1200, md: 996, sm: 768 }}
+          cols={{ lg: 12, md: 10, sm: 6 }}
+          rowHeight={30}
+          isDraggable={editMode}
+          isResizable={editMode}
+          draggableHandle=".drag-handle"
+          margin={[16, 16]}
+          containerPadding={[0, 0]}
+          useCSSTransforms
+        >
+          {/* Widget: Activité */}
+          <div key="activity">
+            <Widget editMode={editMode}>
+              <SectionTitle>Activité — 8 dernières semaines</SectionTitle>
+              <div style={{ flex: 1, minHeight: 0 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={weeklyData} margin={{ top: 4, right: 0, bottom: 0, left: -28 }}>
+                    <defs>
+                      <linearGradient id="gM" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#1D9E75" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#1D9E75" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="gA" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#378ADD" stopOpacity={0.2} />
+                        <stop offset="95%" stopColor="#378ADD" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis dataKey="week" tick={{ fill: '#565c75', fontSize: 10, fontFamily: 'monospace' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: '#565c75', fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Area type="monotone" dataKey="réunions" stroke="#1D9E75" strokeWidth={2} fill="url(#gM)" dot={false} />
+                    <Area type="monotone" dataKey="actions" stroke="#378ADD" strokeWidth={1.5} fill="url(#gA)" dot={false} strokeDasharray="4 2" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+              <div style={{ display: 'flex', gap: 16, marginTop: 8, flexShrink: 0 }}>
+                {[['#1D9E75', 'Réunions'], ['#378ADD', 'Actions']].map(([c, l]) => (
+                  <span key={l} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace' }}>
+                    <span style={{ width: 16, height: 2, background: c, borderRadius: 1, display: 'inline-block' }} />{l}
+                  </span>
                 ))}
               </div>
-            </div>
-          )}
+            </Widget>
+          </div>
 
-          {/* Mood trend */}
-          {moodTrend.length > 0 && (
-            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: '18px 20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          {/* Widget: Analyse CR */}
+          <div key="cr">
+            <Widget editMode={editMode}>
+              <SectionTitle>Analyse CR — 20 dernières réunions</SectionTitle>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, flex: 1 }}>
+                {[
+                  { label: 'Succès', value: crStats.successes, color: '#1D9E75' },
+                  { label: 'Défauts', value: crStats.failures, color: '#E24B4A' },
+                  { label: 'Sensibles', value: crStats.sensitive, color: '#EF9F27' },
+                  { label: 'Relationnels', value: crStats.relational, color: '#7F77DD' },
+                ].map(s => {
+                  const total = crStats.successes + crStats.failures + crStats.sensitive + crStats.relational
+                  const pct = total > 0 ? Math.round((s.value / total) * 100) : 0
+                  return (
+                    <div key={s.label} style={{ background: `${s.color}08`, border: `1px solid ${s.color}20`, borderRadius: 10, padding: '12px 14px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <span style={{ fontSize: 11, color: s.color, fontFamily: 'monospace', fontWeight: 600 }}>{s.label}</span>
+                        <span style={{ fontSize: 10, color: `${s.color}80`, fontFamily: 'monospace' }}>{pct}%</span>
+                      </div>
+                      <span style={{ fontSize: 26, fontWeight: 800, color: '#fff', fontFamily: 'monospace' }}>{s.value}</span>
+                      <div style={{ marginTop: 6, height: 3, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${pct}%`, background: s.color, borderRadius: 2, transition: 'width 0.8s ease' }} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </Widget>
+          </div>
+
+          {/* Widget: Performance équipe */}
+          <div key="perf">
+            <Widget editMode={editMode}>
+              <SectionTitle action="Voir équipe" onAction={() => navigate(ROUTES.COLLEAGUES)}>Performance équipe</SectionTitle>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', flex: 1 }}>
+                {colleaguePerf.length === 0
+                  ? <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace' }}>Aucune donnée</p>
+                  : colleaguePerf.map((c, i) => (
+                    <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', fontFamily: 'monospace', width: 14, textAlign: 'right', flexShrink: 0 }}>{i + 1}</span>
+                      <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', width: 72, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
+                      <div style={{ flex: 1, height: 6, background: 'rgba(255,255,255,0.05)', borderRadius: 3, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${c.rate}%`, background: c.rate >= 80 ? '#1D9E75' : c.rate >= 50 ? '#EF9F27' : '#E24B4A', borderRadius: 3, transition: 'width 0.6s ease' }} />
+                      </div>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: c.rate >= 80 ? '#1D9E75' : c.rate >= 50 ? '#EF9F27' : '#E24B4A', fontFamily: 'monospace', width: 36, textAlign: 'right', flexShrink: 0 }}>{c.rate}%</span>
+                      {c.late > 0 && <span style={{ fontSize: 9, color: '#F09595', background: '#E24B4A15', borderRadius: 20, padding: '1px 5px', fontFamily: 'monospace' }}>+{c.late}</span>}
+                    </div>
+                  ))}
+              </div>
+            </Widget>
+          </div>
+
+          {/* Widget: Baromètre humeur */}
+          <div key="mood">
+            <Widget editMode={editMode}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexShrink: 0 }}>
                 <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', fontFamily: 'monospace', margin: 0 }}>Baromètre humeur</p>
                 {stats.avgMood && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -504,119 +681,132 @@ export function DashboardPage() {
                   </div>
                 )}
               </div>
-              <ResponsiveContainer width="100%" height={100}>
-                <AreaChart data={moodTrend} margin={{ top: 4, right: 0, bottom: 0, left: -32 }}>
-                  <defs>
-                    <linearGradient id="gMood" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#7F77DD" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#7F77DD" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis dataKey="date" tick={{ fill: '#565c75', fontSize: 9, fontFamily: 'monospace' }} axisLine={false} tickLine={false} />
-                  <YAxis domain={[1, 5]} ticks={[1, 3, 5]} tick={{ fill: '#565c75', fontSize: 9 }} axisLine={false} tickLine={false} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Area type="monotone" dataKey="score" stroke="#7F77DD" strokeWidth={2} fill="url(#gMood)" dot={{ fill: '#7F77DD', r: 2, strokeWidth: 0 }} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-
-          {/* Upcoming meetings */}
-          {upcomingMeetings.length > 0 && (
-            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: '18px 20px' }}>
-              <SectionTitle action="Toutes" onAction={() => navigate(ROUTES.MEETINGS)}>Prochaines réunions</SectionTitle>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {upcomingMeetings.map(m => {
-                  const d = new Date(m.date)
-                  const daysLeft = differenceInDays(d, new Date())
-                  return (
-                    <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 10, cursor: 'pointer' }}
-                      onClick={() => navigate(ROUTES.MEETINGS)}>
-                      <div style={{ width: 36, height: 36, borderRadius: 8, background: '#1D9E7512', border: '1px solid #1D9E7525', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <span style={{ fontSize: 14, fontWeight: 800, color: '#5DCAA5', lineHeight: 1 }}>{format(d, 'd')}</span>
-                        <span style={{ fontSize: 8, color: '#1D9E75', textTransform: 'uppercase' }}>{format(d, 'MMM', { locale: fr })}</span>
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.8)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.title}</p>
-                        <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', margin: '2px 0 0', fontFamily: 'monospace' }}>
-                          {daysLeft === 0 ? "Aujourd'hui" : daysLeft === 1 ? 'Demain' : `Dans ${daysLeft} jours`}
-                          {format(d, 'HH:mm') !== '00:00' && ` · ${format(d, 'HH:mm')}`}
-                        </p>
-                      </div>
-                    </div>
-                  )
-                })}
+              <div style={{ flex: 1, minHeight: 0 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={moodTrend} margin={{ top: 4, right: 0, bottom: 0, left: -32 }}>
+                    <defs>
+                      <linearGradient id="gMood" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#7F77DD" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#7F77DD" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis dataKey="date" tick={{ fill: '#565c75', fontSize: 9, fontFamily: 'monospace' }} axisLine={false} tickLine={false} />
+                    <YAxis domain={[1, 5]} ticks={[1, 3, 5]} tick={{ fill: '#565c75', fontSize: 9 }} axisLine={false} tickLine={false} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Area type="monotone" dataKey="score" stroke="#7F77DD" strokeWidth={2} fill="url(#gMood)" dot={{ fill: '#7F77DD', r: 2, strokeWidth: 0 }} />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* Col 3 — alertes + congés + actions urgentes */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-          {/* Alerts */}
-          <div style={{ background: 'rgba(255,255,255,0.02)', border: alerts.some(a => a.level === 'critical') ? '1px solid #E24B4A25' : '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: '18px 20px' }}>
-            <SectionTitle>Alertes actives</SectionTitle>
-            {alerts.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '16px 0', color: '#1D9E75', fontSize: 13 }}>
-                <Award style={{ width: 24, height: 24, margin: '0 auto 8px', display: 'block', opacity: 0.6 }} />
-                Tout est sous contrôle
-              </div>
-            ) : alerts.map((a, i) => (
-              <AlertItem key={i} level={a.level} title={a.title} sub={a.sub} action={a.action} onClick={() => navigate(a.route)} />
-            ))}
+            </Widget>
           </div>
 
-          {/* Congés widget */}
-          <LeavesWidget onNavigate={() => navigate('/leaves')} />
-
-          {/* Urgent actions */}
-          {urgentActions.length > 0 && (
-            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: '18px 20px' }}>
-              <SectionTitle action="Voir tout" onAction={() => navigate(ROUTES.ACTIONS)}>Actions urgentes</SectionTitle>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                {urgentActions.map(a => {
-                  const late = a.due_date && isOverdue(a.due_date)
-                  const c = colleagues?.find(col => col.id === a.assigned_to_colleague_id)
-                  return (
-                    <div key={a.id} style={{ display: 'flex', gap: 8, padding: '8px 10px', background: late ? '#E24B4A06' : 'rgba(255,255,255,0.02)', border: `1px solid ${late ? '#E24B4A20' : 'rgba(255,255,255,0.05)'}`, borderRadius: 8, cursor: 'pointer' }}
-                      onClick={() => navigate(ROUTES.ACTIONS)}>
-                      <div style={{ width: 5, height: 5, borderRadius: '50%', background: late ? '#E24B4A' : '#EF9F27', flexShrink: 0, marginTop: 5 }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.description}</p>
-                        <p style={{ fontSize: 10, color: late ? '#F09595' : 'rgba(255,255,255,0.3)', margin: '1px 0 0', fontFamily: 'monospace' }}>
-                          {c?.name}{c && a.due_date && ' · '}{a.due_date && fDate(a.due_date)}{late && ' · En retard'}
-                        </p>
+          {/* Widget: Prochaines réunions */}
+          <div key="meetings">
+            <Widget editMode={editMode}>
+              <SectionTitle action="Toutes" onAction={() => navigate(ROUTES.MEETINGS)}>Prochaines réunions</SectionTitle>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, overflowY: 'auto', flex: 1 }}>
+                {upcomingMeetings.length === 0
+                  ? <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace' }}>Aucune réunion planifiée</p>
+                  : upcomingMeetings.map(m => {
+                    const d = new Date(m.date)
+                    const daysLeft = differenceInDays(d, new Date())
+                    return (
+                      <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 10, cursor: 'pointer' }}
+                        onClick={() => navigate(ROUTES.MEETINGS)}>
+                        <div style={{ width: 36, height: 36, borderRadius: 8, background: '#1D9E7512', border: '1px solid #1D9E7525', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <span style={{ fontSize: 14, fontWeight: 800, color: '#5DCAA5', lineHeight: 1 }}>{format(d, 'd')}</span>
+                          <span style={{ fontSize: 8, color: '#1D9E75', textTransform: 'uppercase' }}>{format(d, 'MMM', { locale: fr })}</span>
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.8)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.title}</p>
+                          <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', margin: '2px 0 0', fontFamily: 'monospace' }}>
+                            {daysLeft === 0 ? "Aujourd'hui" : daysLeft === 1 ? 'Demain' : `Dans ${daysLeft} jours`}
+                            {format(d, 'HH:mm') !== '00:00' && ` · ${format(d, 'HH:mm')}`}
+                          </p>
+                        </div>
                       </div>
+                    )
+                  })}
+              </div>
+            </Widget>
+          </div>
+
+          {/* Widget: Alertes */}
+          <div key="alerts">
+            <Widget editMode={editMode} borderColor={alerts.some(a => a.level === 'critical') ? '#E24B4A25' : undefined}>
+              <SectionTitle>Alertes actives</SectionTitle>
+              <div style={{ overflowY: 'auto', flex: 1 }}>
+                {alerts.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '16px 0', color: '#1D9E75', fontSize: 13 }}>
+                    <Award style={{ width: 24, height: 24, margin: '0 auto 8px', display: 'block', opacity: 0.6 }} />
+                    Tout est sous contrôle
+                  </div>
+                ) : alerts.map((a, i) => (
+                  <AlertItem key={i} level={a.level} title={a.title} sub={a.sub} action={a.action} onClick={() => navigate(a.route)} />
+                ))}
+              </div>
+            </Widget>
+          </div>
+
+          {/* Widget: Congés */}
+          <div key="leaves">
+            <Widget editMode={editMode}>
+              <LeavesWidget onNavigate={() => navigate('/leaves')} />
+            </Widget>
+          </div>
+
+          {/* Widget: Actions urgentes */}
+          <div key="urgentact">
+            <Widget editMode={editMode}>
+              <SectionTitle action="Voir tout" onAction={() => navigate(ROUTES.ACTIONS)}>Actions urgentes</SectionTitle>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5, overflowY: 'auto', flex: 1 }}>
+                {urgentActions.length === 0
+                  ? <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace' }}>Aucune action urgente</p>
+                  : urgentActions.map(a => {
+                    const late = a.due_date && isOverdue(a.due_date)
+                    const c = colleagues?.find(col => col.id === a.assigned_to_colleague_id)
+                    return (
+                      <div key={a.id} style={{ display: 'flex', gap: 8, padding: '8px 10px', background: late ? '#E24B4A06' : 'rgba(255,255,255,0.02)', border: `1px solid ${late ? '#E24B4A20' : 'rgba(255,255,255,0.05)'}`, borderRadius: 8, cursor: 'pointer' }}
+                        onClick={() => navigate(ROUTES.ACTIONS)}>
+                        <div style={{ width: 5, height: 5, borderRadius: '50%', background: late ? '#E24B4A' : '#EF9F27', flexShrink: 0, marginTop: 5 }} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.description}</p>
+                          <p style={{ fontSize: 10, color: late ? '#F09595' : 'rgba(255,255,255,0.3)', margin: '1px 0 0', fontFamily: 'monospace' }}>
+                            {c?.name}{c && a.due_date && ' · '}{a.due_date && fDate(a.due_date)}{late && ' · En retard'}
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })}
+              </div>
+            </Widget>
+          </div>
+
+          {/* Widget: Véhicules */}
+          <div key="vehicles">
+            <Widget editMode={editMode}>
+              <SectionTitle action="Parc auto" onAction={() => navigate(ROUTES.VEHICLES)}>Véhicules</SectionTitle>
+              <div style={{ overflowY: 'auto', flex: 1 }}>
+                {(vehicles ?? []).slice(0, 4).map(v => {
+                  const vInsp = (allInspections ?? []).filter((i: any) => i.vehicle_id === v.id)
+                  const expired = vInsp.filter((i: any) => i.status === 'overdue').length
+                  const soon = vInsp.filter((i: any) => isDueSoon(i.due_date, 30)).length
+                  const color = expired > 0 ? '#E24B4A' : soon > 0 ? '#EF9F27' : '#1D9E75'
+                  return (
+                    <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                      <span style={{ flex: 1, fontSize: 12, color: 'rgba(255,255,255,0.6)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</span>
+                      <span style={{ fontSize: 9, color: color, fontFamily: 'monospace' }}>
+                        {expired > 0 ? `${expired} exp.` : soon > 0 ? `${soon} bientôt` : 'OK'}
+                      </span>
                     </div>
                   )
                 })}
               </div>
-            </div>
-          )}
+            </Widget>
+          </div>
 
-          {/* Vehicles quick */}
-          {vehicles && vehicles.length > 0 && (
-            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: '18px 20px' }}>
-              <SectionTitle action="Parc auto" onAction={() => navigate(ROUTES.VEHICLES)}>Véhicules</SectionTitle>
-              {vehicles.slice(0, 4).map(v => {
-                const vInsp = (allInspections ?? []).filter((i: any) => i.vehicle_id === v.id)
-                const expired = vInsp.filter((i: any) => i.status === 'overdue').length
-                const soon = vInsp.filter((i: any) => isDueSoon(i.due_date, 30)).length
-                const color = expired > 0 ? '#E24B4A' : soon > 0 ? '#EF9F27' : '#1D9E75'
-                return (
-                  <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0 }} />
-                    <span style={{ flex: 1, fontSize: 12, color: 'rgba(255,255,255,0.6)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</span>
-                    <span style={{ fontSize: 9, color: color, fontFamily: 'monospace' }}>
-                      {expired > 0 ? `${expired} exp.` : soon > 0 ? `${soon} bientôt` : 'OK'}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
+        </ResponsiveGridLayout>
       </div>
     </div>
   )
