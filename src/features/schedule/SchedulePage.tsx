@@ -114,165 +114,154 @@ export function SchedulePage() {
           </div>
         </div>
 
-        <Card className="flex-1 flex flex-col overflow-hidden border-[var(--color-border)] shadow-md">
+        <Card className="flex-1 flex flex-col overflow-hidden border-[var(--color-border)] shadow-md relative">
           {(isLoadingTeams || isLoadingMissions) && (
             <div className="absolute inset-0 bg-[var(--color-overlay)] backdrop-blur-sm z-50 flex items-center justify-center">
               <Spinner />
             </div>
           )}
+          
+          {/* Mobile Safe Wrapper for Scroll */}
+          <div className="flex-1 overflow-auto">
+            <div className="min-w-[1000px] flex flex-col min-h-full">
 
-          {/* En-tête calendrier (Jours) */}
-          <div className="flex border-b border-[var(--color-border)] bg-[var(--color-bg-input)] relative z-30">
-            <div className="w-72 flex-shrink-0 p-4 border-r border-[var(--color-border)] flex items-center font-medium text-[11px] text-[var(--color-text-faded)] uppercase tracking-wider">
-              Équipes
-            </div>
-            <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${daysInView}, minmax(40px, 1fr))` }}>
-              {days.map((day, i) => {
-                const isToday = isSameDay(day, new Date())
-                const isWeekend = day.getDay() === 0 || day.getDay() === 6
-                return (
-                  <div key={i} className={`flex flex-col items-center justify-center py-2 border-r border-[var(--color-border)] ${isWeekend ? 'bg-[var(--color-bg-card)] opacity-50' : ''}`}>
-                    <span className="text-[10px] text-[var(--color-text-faded)] uppercase">{format(day, 'EEE', { locale: fr })}</span>
-                    <span className={`text-[13px] font-bold mt-0.5 w-6 h-6 flex items-center justify-center rounded-full ${isToday ? 'bg-teal-500/20 text-[var(--color-brand)] ring-1 ring-[var(--color-brand)]' : 'text-[var(--color-text-main)]'}`}>
-                      {format(day, 'd')}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Corps du calendrier (Équipes + Grille) */}
-          <div className="flex-1 overflow-y-auto bg-[var(--color-bg-card)] relative">
-            {teams?.map(team => {
-              const teamMissions = missions?.filter(m => m.team_id === team.id) || []
-              
-              // Indicateur de charge (ex: combien de jours bookés dans cette quinzaine)
-              let bookedDays = 0;
-              teamMissions.forEach(m => {
-                const start = max([parseISO(m.start_date), currentDate])
-                const end = min([parseISO(m.end_date), periodEnd])
-                if(isBefore(start, end) || isSameDay(start, end)) {
-                  bookedDays += differenceInCalendarDays(end, start) + 1
-                }
-              })
-              const workloadPct = Math.min(100, Math.round((bookedDays / daysInView) * 100))
-              const workloadColor = workloadPct > 80 ? '#EF4444' : workloadPct > 40 ? '#F59E0B' : '#10B981'
-
-              return (
-                <div key={team.id} className="flex border-b border-[var(--color-border)] group hover:bg-[var(--color-bg-input)] transition-colors relative min-h-[70px]">
-                  
-                  {/* Colonne de Gauche : Infos Équipe */}
-                  <div className="w-72 flex-shrink-0 p-4 border-r border-[var(--color-border)] bg-[var(--color-bg-card)] z-30 transition-colors group-hover:bg-[var(--color-bg-input)] flex flex-col justify-center">
-                    <div className="flex items-center gap-3">
-                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0 ring-4 ring-[var(--color-bg-input)]" style={{ backgroundColor: team.color }} />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-[var(--color-text-main)] truncate">{team.name}</p>
-                        <div className="flex items-center gap-1 mt-1 overflow-hidden">
-                          {team.team_members?.slice(0, 5).map((tm, idx) => (
-                            <div key={tm.id} className="relative ring-2 ring-[var(--color-bg-card)] rounded-full group-hover:ring-[var(--color-bg-input)]" style={{ zIndex: 10 - idx, marginLeft: idx > 0 ? '-10px' : '0' }} title={tm.colleagues?.name}>
-                              <Avatar name={tm.colleagues?.name || '?'} size="sm" />
-                            </div>
-                          ))}
-                          {(team.team_members?.length || 0) > 5 && (
-                            <span className="text-[10px] text-[var(--color-text-faded)] ml-1 font-medium">+{team.team_members!.length - 5}</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    {/* Barre de Workload */}
-                    <div className="mt-3 flex items-center gap-2" title={`Charge de l'équipe cette quinzaine : ${workloadPct}%`}>
-                      <div className="flex-1 h-1 bg-[var(--color-border)] rounded-full overflow-hidden">
-                        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${workloadPct}%`, backgroundColor: workloadColor }} />
-                      </div>
-                      <span className="text-[9px] font-mono text-[var(--color-text-faded)]">{workloadPct}%</span>
-                    </div>
-                  </div>
-                  
-                  {/* Grille Intéractive Droite */}
-                  {/* Utilisation de gridAutoRows pour laisser les missions se superposer de façon fluide si chevauchement */}
-                  <div className="flex-1 grid relative p-1 pb-2 gap-y-1.5" style={{ gridTemplateColumns: `repeat(${daysInView}, minmax(40px, 1fr))`, gridAutoRows: 'minmax(32px, max-content)' }}>
-                    
-                    {/* Cellules droppables / cliquables en arrière plan (elles s'étirent sur toute la hauteur générée par auto-rows) */}
-                    {days.map((day, i) => {
-                       const isWeekend = day.getDay() === 0 || day.getDay() === 6
-                       return (
-                         <div 
-                           key={i} 
-                           onDragOver={handleDragOver}
-                           onDragLeave={handleDragLeave}
-                           onDrop={(e) => handleDropMission(e, team.id, day)}
-                           onClick={() => setQuickAddMission({ teamId: team.id, date: day })}
-                           className={`border-r border-[var(--color-border)] transition-colors cursor-crosshair group/cell ${isWeekend ? 'bg-[var(--color-bg-app)] opacity-30' : 'hover:bg-white/5'}`} 
-                           style={{ gridColumnStart: i + 1, gridRow: '1 / -1', zIndex: 1 }} 
-                           title="Cliquez pour rajouter une mission ici"
-                         >
-                            <div className="hidden group-hover/cell:flex items-center justify-center h-full w-full opacity-20">
-                              <Plus className="w-5 h-5 text-white" />
-                            </div>
-                         </div>
-                       )
-                    })}
-
-                    {/* Blocs Missions (Draggables) */}
-                    {teamMissions.map(mission => {
-                      const mStart = parseISO(mission.start_date)
-                      const mEnd = parseISO(mission.end_date)
-                      
-                      if (isAfter(mStart, periodEnd) || isBefore(mEnd, currentDate)) return null
-
-                      const startCol = Math.max(1, differenceInCalendarDays(mStart, currentDate) + 1)
-                      const endCol = Math.min(daysInView + 1, differenceInCalendarDays(mEnd, currentDate) + 2) 
-                      
-                      const bgStyle = mission.color ? `${mission.color}15` : 'var(--color-bg-input)'
-                      
-                      return (
-                        <div 
-                          key={mission.id}
-                          draggable
-                          onDragStart={(e) => {
-                            e.dataTransfer.setData('mission_id', mission.id)
-                            e.currentTarget.style.opacity = '0.5' // Feedback visuel
-                          }}
-                          onDragEnd={(e) => {
-                            e.currentTarget.style.opacity = '1'
-                          }}
-                          onClick={(e) => { e.stopPropagation(); setEditingMission(mission); }}
-                          className={`
-                            mission-${mission.status}
-                            h-9 mt-1 rounded-md mx-1 border-[1.5px] flex items-center px-2 cursor-grab active:cursor-grabbing hover:shadow-lg transition-transform hover:scale-[1.01]
-                          `}
-                          style={{ 
-                            gridColumnStart: startCol, 
-                            gridColumnEnd: endCol,
-                            backgroundColor: bgStyle,
-                            borderColor: mission.color,
-                            zIndex: 20
-                          }}
-                          title={`[${mission.status.toUpperCase()}] ${mission.title} - Cliquez pour éditer`}
-                        >
-                          {mission.status === 'planned' && <Briefcase className="w-3.5 h-3.5 mr-1.5 opacity-60 flex-shrink-0" style={{ color: mission.color }} />}
-                          {mission.status === 'in_progress' && <Clock className="w-3.5 h-3.5 mr-1.5 opacity-80 flex-shrink-0 animate-pulse" style={{ color: mission.color }} />}
-                          {mission.status === 'completed' && <CheckCircle className="w-3.5 h-3.5 mr-1.5 opacity-100 flex-shrink-0" style={{ color: mission.color }} />}
-                          
-                          <span className="text-[11px] font-bold truncate flex-1 tracking-wide" style={{ color: mission.color }}>
-                            {mission.title}
-                          </span>
-                        </div>
-                      )
-                    })}
-                  </div>
+              {/* En-tête calendrier (Jours) */}
+              <div className="flex border-b border-[var(--color-border)] bg-[var(--color-bg-input)] sticky top-0 z-40 shadow-sm">
+                <div className="w-64 flex-shrink-0 p-4 border-r border-[var(--color-border)] flex items-center font-medium text-[11px] text-[var(--color-text-faded)] uppercase tracking-wider bg-[var(--color-bg-input)]">
+                  Équipes
                 </div>
-              )
-            })}
-            
-            {(teams?.length === 0) && (
-              <div className="p-20 flex flex-col items-center justify-center text-[var(--color-text-faded)] text-sm">
-                <Users className="w-10 h-10 mb-4 opacity-30" />
-                <p className="font-medium text-slate-400">Aucune équipe n'est configurée.</p>
-                <Button onClick={() => setIsTeamModalOpen(true)} variant="primary" className="mt-4">Créer ma première équipe</Button>
+                <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${daysInView}, minmax(40px, 1fr))` }}>
+                  {days.map((day, i) => {
+                    const isToday = isSameDay(day, new Date())
+                    const isWeekend = day.getDay() === 0 || day.getDay() === 6
+                    return (
+                      <div key={i} className={`flex flex-col items-center justify-center py-2 border-r border-[var(--color-border)] ${isWeekend ? 'bg-[var(--color-bg-card)] opacity-50' : ''}`}>
+                        <span className="text-[10px] text-[var(--color-text-faded)] uppercase">{format(day, 'EEE', { locale: fr })}</span>
+                        <span className={`text-[13px] font-bold mt-0.5 w-6 h-6 flex items-center justify-center rounded-full ${isToday ? 'bg-teal-500/20 text-[var(--color-brand)] ring-1 ring-[var(--color-brand)]' : 'text-[var(--color-text-main)]'}`}>
+                          {format(day, 'd')}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
-            )}
+
+              {/* Corps du calendrier (Équipes + Grille) */}
+              <div className="flex-1 flex flex-col bg-[var(--color-bg-card)] relative">
+                {teams?.map(team => {
+                  const teamMissions = missions?.filter(m => m.team_id === team.id) || []
+                  
+                  let bookedDays = 0;
+                  teamMissions.forEach(m => {
+                    const start = max([parseISO(m.start_date), currentDate])
+                    const end = min([parseISO(m.end_date), periodEnd])
+                    if(isBefore(start, end) || isSameDay(start, end)) {
+                      bookedDays += differenceInCalendarDays(end, start) + 1
+                    }
+                  })
+                  const workloadPct = Math.min(100, Math.round((bookedDays / daysInView) * 100))
+                  const workloadColor = workloadPct > 80 ? '#EF4444' : workloadPct > 40 ? '#F59E0B' : '#10B981'
+
+                  return (
+                    <div key={team.id} className="flex border-b border-[var(--color-border)] group hover:bg-[var(--color-bg-input)] transition-colors relative min-h-[70px]">
+                      
+                      {/* Colonne de Gauche : Infos Équipe */}
+                      <div className="w-64 flex-shrink-0 p-4 border-r border-[var(--color-border)] bg-[var(--color-bg-card)] z-30 transition-colors group-hover:bg-[var(--color-bg-input)] flex flex-col justify-center sticky left-0 shadow-[2px_0_10px_rgba(0,0,0,0.05)]">
+                        <div className="flex items-center gap-3">
+                          <div className="w-2.5 h-2.5 rounded-full flex-shrink-0 ring-4 ring-[var(--color-bg-input)]" style={{ backgroundColor: team.color }} />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-[var(--color-text-main)] truncate">{team.name}</p>
+                            <div className="flex items-center gap-1 mt-1 overflow-hidden">
+                              {team.team_members?.slice(0, 5).map((tm, idx) => (
+                                <div key={tm.id} className="relative ring-2 ring-[var(--color-bg-card)] rounded-full group-hover:ring-[var(--color-bg-input)]" style={{ zIndex: 10 - idx, marginLeft: idx > 0 ? '-10px' : '0' }} title={tm.colleagues?.name}>
+                                  <Avatar name={tm.colleagues?.name || '?'} size="sm" />
+                                </div>
+                              ))}
+                              {(team.team_members?.length || 0) > 5 && (
+                                <span className="text-[10px] text-[var(--color-text-faded)] ml-1 font-medium">+{team.team_members!.length - 5}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="mt-3 flex items-center gap-2" title={`Charge de l'équipe : ${workloadPct}%`}>
+                          <div className="flex-1 h-1 bg-[var(--color-border)] rounded-full overflow-hidden">
+                            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${workloadPct}%`, backgroundColor: workloadColor }} />
+                          </div>
+                          <span className="text-[9px] font-mono text-[var(--color-text-faded)]">{workloadPct}%</span>
+                        </div>
+                      </div>
+                      
+                      {/* Grille Intéractive Droite */}
+                      <div className="flex-1 grid relative p-1 pb-2 gap-y-1.5" style={{ gridTemplateColumns: `repeat(${daysInView}, minmax(40px, 1fr))`, gridAutoRows: 'minmax(32px, max-content)' }}>
+                        <div className="hidden drag-over-cell"></div>
+                        {/* Cellules droppables */}
+                        {days.map((day, i) => {
+                          const isWeekend = day.getDay() === 0 || day.getDay() === 6
+                          return (
+                            <div 
+                              key={i} 
+                              onDragOver={handleDragOver}
+                              onDragLeave={handleDragLeave}
+                              onDrop={(e) => handleDropMission(e, team.id, day)}
+                              onClick={() => setQuickAddMission({ teamId: team.id, date: day })}
+                              className={`border-r border-[var(--color-border)] transition-colors cursor-crosshair group/cell ${isWeekend ? 'bg-[var(--color-bg-app)] opacity-30' : 'hover:bg-white/5'}`} 
+                              style={{ gridColumnStart: i + 1, gridRow: '1 / -1', zIndex: 1 }} 
+                            >
+                                <div className="hidden group-hover/cell:flex items-center justify-center h-full w-full opacity-20">
+                                  <Plus className="w-5 h-5 text-white" />
+                                </div>
+                            </div>
+                          )
+                        })}
+
+                        {/* Blocs Missions (Draggables) */}
+                        {teamMissions.map(mission => {
+                          const mStart = parseISO(mission.start_date)
+                          const mEnd = parseISO(mission.end_date)
+                          
+                          if (isAfter(mStart, periodEnd) || isBefore(mEnd, currentDate)) return null
+
+                          const startCol = Math.max(1, differenceInCalendarDays(mStart, currentDate) + 1)
+                          const endCol = Math.min(daysInView + 1, differenceInCalendarDays(mEnd, currentDate) + 2) 
+                          
+                          const bgStyle = mission.color ? `${mission.color}15` : 'var(--color-bg-input)'
+                          
+                          return (
+                            <div 
+                              key={mission.id}
+                              draggable
+                              onDragStart={(e) => {
+                                e.dataTransfer.setData('mission_id', mission.id)
+                                e.currentTarget.style.opacity = '0.5'
+                              }}
+                              onDragEnd={(e) => e.currentTarget.style.opacity = '1'}
+                              onClick={(e) => { e.stopPropagation(); setEditingMission(mission); }}
+                              className={`
+                                mission-${mission.status}
+                                h-9 mt-1 rounded-md mx-1 border-[1.5px] flex items-center px-2 cursor-grab active:cursor-grabbing hover:shadow-lg transition-transform hover:scale-[1.01]
+                              `}
+                              style={{ gridColumnStart: startCol, gridColumnEnd: endCol, backgroundColor: bgStyle, borderColor: mission.color, zIndex: 20 }}
+                            >
+                              {mission.status === 'planned' && <Briefcase className="w-3.5 h-3.5 mr-1.5 opacity-60 flex-shrink-0" style={{ color: mission.color }} />}
+                              {mission.status === 'in_progress' && <Clock className="w-3.5 h-3.5 mr-1.5 opacity-80 flex-shrink-0 animate-pulse" style={{ color: mission.color }} />}
+                              {mission.status === 'completed' && <CheckCircle className="w-3.5 h-3.5 mr-1.5 opacity-100 flex-shrink-0" style={{ color: mission.color }} />}
+                              <span className="text-[11px] font-bold truncate flex-1 tracking-wide" style={{ color: mission.color }}>{mission.title}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+                {(teams?.length === 0) && (
+                  <div className="p-20 flex flex-col items-center justify-center text-[var(--color-text-faded)] text-sm w-full">
+                    <Users className="w-10 h-10 mb-4 opacity-30" />
+                    <p className="font-medium text-slate-400">Aucune équipe n'est configurée.</p>
+                    <Button onClick={() => setIsTeamModalOpen(true)} variant="primary" className="mt-4">Créer ma première équipe</Button>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </Card>
       </div>

@@ -107,10 +107,211 @@
   }
 }
 
-/* ── Mobile responsive ─────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════════
+   MOBILE RESPONSIVE — Full App Overhaul
+   Targets every page for a native-like mobile experience.
+   ══════════════════════════════════════════════════════════════════════ */
+
 @media (max-width: 768px) {
+
+  /* ── Global Layout ───────────────────────────────────────────────── */
   .main-content {
-    padding-top: 56px !important;
+    padding-top: 62px !important;
+    padding-bottom: 80px !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    height: 100vh !important;
+  }
+
+  /* All full-height pages: allow scroll instead of overflow hidden */
+  .main-content > div {
+    height: auto !important;
+    min-height: 100% !important;
+    overflow: visible !important;
+  }
+
+  /* ── Topbars (all pages) ─────────────────────────────────────────── */
+  /* The topbar pattern: flexShrink:0, height:52 bar at top of each page */
+  .main-content > div > div:first-child {
+    flex-wrap: wrap !important;
+    height: auto !important;
+    min-height: 52px;
+    padding: 12px 16px !important;
+    gap: 8px !important;
+  }
+
+  /* ── Dashboard ───────────────────────────────────────────────────── */
+  /* KPI row: 5 cols → 2 cols */
+  .main-content > div > div:first-child > div:last-child {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Dashboard header: stack vertically */
+  .main-content > div > div:first-child > div:first-child {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+
+  /* Dashboard header actions row: wrap + full width */
+  .main-content > div > div:first-child > div:first-child > div:last-child {
+    width: 100% !important;
+    flex-wrap: wrap !important;
+  }
+
+  /* Dashboard grid container padding */
+  .main-content > div > div:nth-child(2) {
+    padding: 12px !important;
+  }
+
+  /* react-grid-layout: force single column on mobile */
+  .react-grid-layout {
+    height: auto !important;
+  }
+  .react-grid-item {
+    position: relative !important;
+    transform: none !important;
+    left: 0 !important;
+    top: auto !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 250px !important;
+    margin-bottom: 12px !important;
+  }
+
+  /* ── Actions Page (Kanban) ───────────────────────────────────────── */
+  /* Kanban grid: 4 cols → 1 col stacked */
+  .main-content > div > div:last-child {
+    grid-template-columns: 1fr !important;
+    padding: 12px 16px !important;
+  }
+
+  /* Actions topbar: stack stat pills */
+  .main-content > div > div:first-child > div:nth-child(2) {
+    flex-wrap: wrap !important;
+  }
+
+  /* ── Meetings & Colleagues: Split Layout Fix ─────────────────────── */
+  /* These use a flex row with left panel (fixed width) + right panel.
+     On mobile, stack them vertically and make left panel full width. */
+  .main-content > div > div:nth-child(2),
+  .main-content > div > div:nth-child(3) {
+    flex-direction: column !important;
+  }
+
+  /* Left sidebar panels (width: 270px / 300px) → full width */
+  .main-content > div > div:nth-child(2) > div:first-child,
+  .main-content > div > div:nth-child(3) > div:first-child {
+    width: 100% !important;
+    max-height: 45vh !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--color-border) !important;
+  }
+
+  /* Right detail panels: full width + auto height */
+  .main-content > div > div:nth-child(2) > div:last-child,
+  .main-content > div > div:nth-child(3) > div:last-child {
+    flex: 1 !important;
+    min-height: 50vh !important;
+  }
+
+  /* Detail panel paddings */
+  .main-content > div > div:nth-child(2) > div:last-child > div > div:first-child,
+  .main-content > div > div:nth-child(3) > div:last-child > div > div:first-child {
+    padding: 20px 16px !important;
+  }
+
+  /* CR grid: 2 cols → 1 col */
+  .main-content > div > div:nth-child(2) > div:last-child > div > div:nth-child(3) > div:last-child {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Colleague hero: stack avatar/info */
+  .main-content > div > div:nth-child(2) > div:last-child > div > div:first-child > div:first-child {
+    flex-wrap: wrap !important;
+    gap: 12px !important;
+  }
+
+  /* Colleague stats grid: 4 → 2 */
+  .main-content > div > div:nth-child(2) > div:last-child > div > div:first-child > div:last-child {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Colleague tabs: scrollable */
+  .main-content > div > div:nth-child(2) > div:last-child > div > div:nth-child(2) {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+    padding: 0 16px !important;
+  }
+
+  /* Tab content padding */
+  .main-content > div > div:nth-child(2) > div:last-child > div > div:nth-child(3) {
+    padding: 16px !important;
+  }
+
+  /* Colleague overview: 2 cols → 1 col */
+  .main-content > div > div:nth-child(2) > div:last-child > div > div:nth-child(3) > div:first-child {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* ── Modals ──────────────────────────────────────────────────────── */
+  /* All fixed modals: full width on mobile */
+  [style*="position: fixed"][style*="inset: 0"] > div,
+  .fixed.inset-0 > div {
+    max-width: 100% !important;
+    margin: 12px !important;
+    border-radius: 16px !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+  }
+
+  /* Radix dialog modals */
+  [role="dialog"] {
+    width: calc(100% - 32px) !important;
+    max-width: 100% !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+  }
+
+  /* ── Schedule Page ───────────────────────────────────────────────── */
+  /* Schedule toolbar: column layout */
+  .main-content > div > div:nth-child(2) > div:first-child {
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+  }
+
+  /* Schedule buttons in PageHeader: wrap */
+  .main-content > div > div:first-child > div:last-child {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+
+  /* ── Typography mobile adjustments ──────────────────────────────── */
+  h1 {
+    font-size: 16px !important;
+  }
+
+  /* ── Touch improvements ─────────────────────────────────────────── */
+  button, a, select, input, textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Minimum touch target size */
+  button {
+    min-height: 36px;
+  }
+
+  /* ── Forms on mobile ────────────────────────────────────────────── */
+  input, select, textarea {
+    font-size: 16px !important; /* Prevents iOS zoom on focus */
+  }
+}
+
+/* ── Small phones / very narrow ────────────────────────────────────── */
+@media (max-width: 400px) {
+  .main-content > div > div:first-child > div:last-child {
+    grid-template-columns: 1fr !important;
   }
 }
 
