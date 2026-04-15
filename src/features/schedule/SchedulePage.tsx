@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { Card, Spinner, PageHeader, Button, Avatar } from '../../components/ui'
 import { Plus, ChevronLeft, ChevronRight, Users, Briefcase, Clock, CheckCircle, Trash2, Edit2 } from 'lucide-react'
-import { format, addDays, subDays, startOfWeek, differenceInCalendarDays, parseISO, isBefore, isAfter, isSameDay } from 'date-fns'
+import { format, addDays, subDays, startOfWeek, differenceInCalendarDays, parseISO, isBefore, isAfter, isSameDay, max, min } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { useTeams, useMissions, useScheduleMutations, Team, Mission } from './useSchedule'
 import { useColleagues } from '../colleagues/useColleagues'
@@ -291,7 +291,7 @@ function NewTeamModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => voi
   const [color, setColor] = useState('#3b82f6')
   const [leaderId, setLeaderId] = useState('')
   const [selectedMembers, setSelectedMembers] = useState<string[]>([])
-  const { data: colleagues } = useColleagues()
+  const { data: colleagues } = useColleagues() as { data: any[] | undefined }
   const { createTeam } = useScheduleMutations()
 
   const handleSubmit = (e: React.FormEvent) => {

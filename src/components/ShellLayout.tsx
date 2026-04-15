@@ -292,7 +292,21 @@ export function ShellLayout() {
         </nav>
 
         {/* Footer (Desktop Menu) */}
-        <div className="hidden md:flex" style={{ padding: '14px 16px', borderTop: '1px solid var(--color-border)', alignItems: 'center', gap: 10 }}>
+        <div className="hidden md:flex" style={{ padding: '14px 16px', borderTop: '1px solid var(--color-border)', alignItems: 'center', gap: 10, flexDirection: 'column' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
+            <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#1D9E7530', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600, color: '#5DCAA5', flexShrink: 0 }}>
+              {initials}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--color-text-main)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.email}</p>
+            </div>
+            <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} title="Changer le thème"
+              style={{ padding: 6, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-faded)', borderRadius: 6, display: 'flex', transition: 'color 0.15s' }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-text-main)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-text-faded)')}>
+              {theme === 'dark' ? <Sun style={{ width: 14, height: 14 }} /> : <Moon style={{ width: 14, height: 14 }} />}
+            </button>
+          </div>
           <button onClick={handleSignOut} title="Se déconnecter" className="w-full py-2 flex items-center justify-center gap-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors font-medium text-sm">
             <LogOut className="w-4 h-4" /> Déconnexion
           </button>
