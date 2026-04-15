@@ -43,8 +43,8 @@ export function useTeams() {
     queryKey: ['teams', organization?.id],
     enabled: !!organization?.id,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('teams')
+      const { data, error } = await (supabase
+        .from('teams') as any)
         .select('*, team_members(*, colleagues(id, name, post))')
         .eq('organization_id', organization!.id)
         .order('created_at', { ascending: false })
@@ -62,14 +62,14 @@ export function useMissions(startDate: string, endDate: string) {
     queryKey: ['missions', organization?.id, startDate, endDate],
     enabled: !!organization?.id,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('missions')
+      const { data, error } = await (supabase
+        .from('missions') as any)
         .select('*')
         .eq('organization_id', organization!.id)
         .gte('end_date', startDate)
         .lte('start_date', endDate)
       if (error) throw error
-      return data as Mission[]
+      return (data ?? []) as Mission[]
     }
   })
 }
@@ -84,8 +84,8 @@ export function useScheduleMutations() {
       if (!organization) throw new Error("Org error")
       
       // 1. Create Team
-      const { data: team, error: teamErr } = await supabase
-        .from('teams')
+      const { data: team, error: teamErr } = await (supabase
+        .from('teams') as any)
         .insert({
           organization_id: organization.id,
           name: payload.name,
@@ -102,7 +102,7 @@ export function useScheduleMutations() {
           team_id: team.id,
           colleague_id
         }))
-        const { error: memErr } = await supabase.from('team_members').insert(membersData)
+        const { error: memErr } = await (supabase.from('team_members') as any).insert(membersData)
         if (memErr) throw memErr
       }
       return team
@@ -113,8 +113,8 @@ export function useScheduleMutations() {
   const createMission = useMutation({
     mutationFn: async (payload: { title: string; start_date: string; end_date: string; team_id: string; status: string; color: string; description?: string }) => {
       if (!organization) throw new Error("Org error")
-      const { error } = await supabase
-        .from('missions')
+      const { error } = await (supabase
+        .from('missions') as any)
         .insert({
           organization_id: organization.id,
           ...payload
@@ -126,7 +126,7 @@ export function useScheduleMutations() {
 
   const updateMission = useMutation({
     mutationFn: async (payload: { id: string, updates: Partial<Mission> }) => {
-      const { error } = await supabase.from('missions').update(payload.updates).eq('id', payload.id)
+      const { error } = await (supabase.from('missions') as any).update(payload.updates).eq('id', payload.id)
       if (error) throw error
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['missions'] })
@@ -134,11 +134,29 @@ export function useScheduleMutations() {
 
   const deleteMission = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('missions').delete().eq('id', id)
+      const { error } = await (supabase.from('missions') as any).delete().eq('id', id)
       if (error) throw error
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['missions'] })
   })
 
-  return { createTeam, createMission, updateMission, deleteMission }
+  const deleteTeam = useMutation({
+    mutationFn: async (teamId: string) => {
+      // 1. Delete all team_members first
+      const { error: memErr } = await (supabase.from('team_members') as any).delete().eq('team_id', teamId)
+      if (memErr) throw memErr
+      // 2. Delete missions linked to this team
+      const { error: misErr } = await (supabase.from('missions') as any).delete().eq('team_id', teamId)
+      if (misErr) throw misErr
+      // 3. Delete the team
+      const { error } = await (supabase.from('teams') as any).delete().eq('id', teamId)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['teams'] })
+      qc.invalidateQueries({ queryKey: ['missions'] })
+    }
+  })
+
+  return { createTeam, createMission, updateMission, deleteMission, deleteTeam }
 }

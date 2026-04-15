@@ -22,7 +22,7 @@ export function SchedulePage() {
     format(currentDate, 'yyyy-MM-dd'),
     format(periodEnd, 'yyyy-MM-dd')
   )
-  const { updateMission } = useScheduleMutations()
+  const { updateMission, deleteTeam } = useScheduleMutations()
   
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false)
   const [quickAddMission, setQuickAddMission] = useState<{ teamId: string, date: Date } | null>(null)
@@ -170,7 +170,16 @@ export function SchedulePage() {
                         <div className="flex items-center gap-3">
                           <div className="w-2.5 h-2.5 rounded-full flex-shrink-0 ring-4 ring-[var(--color-bg-input)]" style={{ backgroundColor: team.color }} />
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm font-semibold text-[var(--color-text-main)] truncate">{team.name}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-semibold text-[var(--color-text-main)] truncate flex-1">{team.name}</p>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); if (confirm(`Supprimer l'équipe "${team.name}" et toutes ses missions ?`)) { deleteTeam.mutate(team.id, { onSuccess: () => toast.success('Équipe supprimée') }) } }}
+                                className="opacity-0 group-hover:opacity-100 p-1 text-[var(--color-text-faded)] hover:text-red-500 hover:bg-red-500/10 rounded transition-all"
+                                title="Supprimer l'équipe"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                             <div className="flex items-center gap-1 mt-1 overflow-hidden">
                               {team.team_members?.slice(0, 5).map((tm, idx) => (
                                 <div key={tm.id} className="relative ring-2 ring-[var(--color-bg-card)] rounded-full group-hover:ring-[var(--color-bg-input)]" style={{ zIndex: 10 - idx, marginLeft: idx > 0 ? '-10px' : '0' }} title={tm.colleagues?.name}>
