@@ -1,5 +1,5 @@
 import React from 'react'
-import { Car } from 'lucide-react'
+import { Car, ChevronRight, AlertCircle, AlertTriangle } from 'lucide-react'
 import { vehicleUrgency, urgencyLevel, URGENCY, INSP_CONF } from './utils'
 
 interface VehicleCardProps {
@@ -22,58 +22,72 @@ export function VehicleCard({ vehicle, inspections, isSelected, onClick }: Vehic
   }))
 
   return (
-    <button onClick={onClick} style={{
-      width: '100%', textAlign: 'left', padding: '14px 16px',
-      borderBottom: '1px solid var(--color-border)',
-      borderLeft: `3px solid ${isSelected ? urg.color : 'transparent'}`,
-      background: isSelected ? `${urg.color}08` : 'transparent',
-      cursor: 'pointer', transition: 'all 0.12s', position: 'relative',
-    }}
-    onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.025)' }}
-    onMouseLeave={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-        <div style={{
-          width: 40, height: 40, borderRadius: 11,
-          background: `${urg.color}12`, border: `1px solid ${urg.color}30`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-          boxShadow: isSelected && u !== 'ok' ? `0 0 12px ${urg.glow}` : 'none',
-          transition: 'box-shadow 0.2s',
+    <button 
+      onClick={onClick} 
+      className={`
+        w-full text-left p-5 transition-all outline-none relative group
+        ${isSelected ? 'bg-[var(--color-brand)]/5' : 'hover:bg-[var(--color-bg-input)]'}
+      `}
+    >
+      {/* Selection indicator */}
+      {isSelected && (
+        <div className="absolute left-0 top-0 bottom-0 w-1 bg-[var(--color-brand)] shadow-[0_0_10px_var(--color-brand)] z-10" />
+      )}
+
+      <div className="flex gap-4">
+        {/* Icon with urgency border */}
+        <div className={`
+          w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all border-2
+          ${isSelected ? 'scale-105 shadow-xl' : ''}
+        `} style={{ 
+          backgroundColor: `${urg.color}15`, 
+          borderColor: isSelected ? urg.color : `${urg.color}30`,
+          boxShadow: isSelected ? `0 8px 16px ${urg.color}20` : 'none'
         }}>
-          <Car style={{ width: 17, height: 17, color: urg.color }} />
+          {u === 'critical' ? (
+             <AlertCircle className="w-7 h-7 animate-pulse" style={{ color: urg.color }} />
+          ) : (
+             <Car className="w-7 h-7" style={{ color: urg.color }} />
+          )}
         </div>
 
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: isSelected ? 'var(--color-text-main)' : 'var(--color-text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className={`text-sm font-bold truncate ${isSelected ? 'text-[var(--color-text-main)]' : 'text-[var(--color-text-main)]'}`}>
               {vehicle.name}
-            </span>
-            {expiredCount > 0 && (
-              <span style={{ flexShrink: 0, minWidth: 18, height: 18, borderRadius: 9, background: '#E24B4A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: 'var(--color-text-main)', padding: '0 4px' }}>
-                {expiredCount}
-              </span>
-            )}
+            </h3>
+            <ChevronRight className={`w-4 h-4 text-[var(--color-text-faded)] transition-transform group-hover:translate-x-1 ${isSelected ? 'translate-x-1' : ''}`} />
           </div>
-          <p style={{ fontSize: 11, color: 'var(--color-text-faded)', margin: '0 0 8px', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {[vehicle.license_plate, vehicle.type, vehicle.make].filter(Boolean).join(' · ')}
+
+          <div className="flex items-center gap-2 mt-1 px-2 py-0.5 bg-[var(--color-bg-input)] rounded-md w-fit border border-[var(--color-border)]">
+             <span className="text-[10px] font-mono font-bold tracking-widest text-[var(--color-text-muted)] uppercase">
+               {vehicle.license_plate || 'SANS PLAQUE'}
+             </span>
+          </div>
+
+          <p className="text-[11px] text-[var(--color-text-faded)] mt-3 line-clamp-1 italic">
+             {[vehicle.make, vehicle.model, vehicle.type].filter(Boolean).join(' · ')}
           </p>
+
           {knownTypes.length > 0 && (
-            <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+            <div className="flex gap-1.5 mt-3 flex-wrap">
               {knownTypes.map((kt, idx) => (
-                <div key={idx} title={kt.type} style={{
-                  display: 'flex', alignItems: 'center', gap: 4,
-                  padding: '2px 7px',
-                  background: URGENCY[kt.u].bg, border: `1px solid ${URGENCY[kt.u].border}`, borderRadius: 20,
-                }}>
-                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: kt.color, flexShrink: 0 }} />
-                  <span style={{ fontSize: 9, color: kt.color, fontFamily: 'monospace', fontWeight: 600 }}>
+                <div 
+                  key={idx} 
+                  className="flex items-center gap-1.5 px-2 py-0.5 rounded-full border shadow-sm transition-transform hover:scale-105"
+                  style={{ 
+                    backgroundColor: URGENCY[kt.u].bg, 
+                    borderColor: URGENCY[kt.u].border,
+                    color: kt.color 
+                  }}
+                >
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: kt.color }} />
+                  <span className="text-[9px] font-bold uppercase tracking-tight font-mono">
                     {kt.conf.short ?? kt.type.slice(0, 3).toUpperCase()}
                   </span>
                 </div>
               ))}
             </div>
-          )}
-          {inspections.length === 0 && (
-            <span style={{ fontSize: 10, color: 'var(--color-text-faded)', fontFamily: 'monospace' }}>Aucune inspection</span>
           )}
         </div>
       </div>

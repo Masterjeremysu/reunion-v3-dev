@@ -1,24 +1,25 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import { useMeetings, useDeleteMeeting } from './useMeetings'
 import { useActions, useCreateAction } from '../actions/useActions'
 import { useColleagues } from '../colleagues/useColleagues'
-import { Badge, Spinner, Avatar, EmptyState } from '../../components/ui'
+import { Badge, Spinner, Avatar, Button } from '../../components/ui'
 import { fDate, fDateTime, isOverdue } from '../../utils'
-import { ACTION_STATUS } from '../../constants'
 import { NewMeetingModal } from './NewMeetingModal'
 import { EditMeetingModal } from './EditMeetingModal'
 import { exportMeetingPDF } from './usePDFExport'
 import {
   CalendarDays, Plus, Search, Trash2, Pencil, FileDown,
   ThumbsUp, ThumbsDown, AlertCircle, Heart, Shield, TrendingUp,
-  X, Users, Check, FileText, Clock
+  X, Users, Check, FileText, Clock, ChevronRight, ChevronLeft,
+  Calendar, MessageSquare, Loader2
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
+import { toast } from 'sonner'
 
-// ─── Hook cr_items avec attributions ─────────────────────────────────────────
+// ─── Hook cr_items ────────────────────────────────────────────────────────────
 function useCRItems(meetingId: string | null) {
   return useQuery({
     queryKey: ['cr_items', meetingId],
@@ -37,16 +38,11 @@ function useCRItems(meetingId: string | null) {
 }
 
 // ─── Data helpers ─────────────────────────────────────────────────────────────
-function isUUID(s: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)
-}
-
 function parseItem(raw: string): string | null {
   const t = raw.trim()
   if (!t) return null
   const match = t.match(/^[0-9a-f\-]{36}::(.+)$/i)
   if (match) return match[1].trim() || null
-  if (isUUID(t)) return null
   return t
 }
 
@@ -54,19 +50,15 @@ function parseItems(arr: string[] | null | undefined): string[] {
   return (arr ?? []).map(parseItem).filter(Boolean) as string[]
 }
 
-// ─── CR config ────────────────────────────────────────────────────────────────
 const CR_CONF = [
-  { key: 'successes',         label: 'Succès',       icon: ThumbsUp,    color: '#1D9E75', light: '#1D9E7515', border: '#1D9E7725' },
-  { key: 'failures',          label: 'Défauts',      icon: ThumbsDown,  color: '#E24B4A', light: '#E24B4A15', border: '#E24B4A25' },
-  { key: 'sensitive_points',  label: 'Sensibles',    icon: AlertCircle, color: '#EF9F27', light: '#EF9F2715', border: '#EF9F2725' },
-  { key: 'relational_points', label: 'Relationnels', icon: Heart,       color: '#7F77DD', light: '#7F77DD15', border: '#7F77DD25' },
-  { key: 'sse',               label: 'SSE',          icon: Shield,      color: '#378ADD', light: '#378ADD15', border: '#378ADD25' },
-  { key: 'improvements',      label: 'Amélioration', icon: TrendingUp,  color: '#D4537E', light: '#D4537E15', border: '#D4537E25' },
+  { key: 'successes',         label: 'Succès',       icon: ThumbsUp,    color: '#10b981', light: '#ecfdf5', border: '#d1fae5' },
+  { key: 'failures',          label: 'Défauts',      icon: ThumbsDown,  color: '#ef4444', light: '#fef2f2', border: '#fee2e2' },
+  { key: 'sensitive_points',  label: 'Sensibles',    icon: AlertCircle, color: '#f59e0b', light: '#fffbeb', border: '#fef3c7' },
+  { key: 'relational_points', label: 'Relationnels', icon: Heart,       color: '#8b5cf6', light: '#f5f3ff', border: '#ede9fe' },
+  { key: 'sse',               label: 'SSE',          icon: Shield,      color: '#3b82f6', light: '#eff6ff', border: '#dbeafe' },
+  { key: 'improvements',      label: 'Amélioration', icon: TrendingUp,  color: '#ec4899', light: '#fdf2f8', border: '#fce7f3' },
 ] as const
 
-type MeetingRow = any
-
-// ─── Main ─────────────────────────────────────────────────────────────────────
 export function MeetingsPage() {
   const { data: meetings, isLoading } = useMeetings()
   const { data: colleagues } = useColleagues()
@@ -75,9 +67,16 @@ export function MeetingsPage() {
   const [selectedId,    setSelectedId]    = useState<string | null>(null)
   const [search,        setSearch]        = useState('')
   const [showModal,     setShowModal]     = useState(false)
-  const [editMeeting,   setEditMeeting]   = useState<MeetingRow | null>(null)
+  const [editMeeting,   setEditMeeting]   = useState<any | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
-  const [crSearch,      setCrSearch]      = useState('')
+  const [mobileView,    setMobileView]    = useState<'list' | 'detail'>('list')
+  const [isMobile,      setIsMobile]      = useState(window.innerWidth < 768)
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   const filtered = useMemo(() => {
     if (!meetings) return []
@@ -94,168 +93,177 @@ export function MeetingsPage() {
     })
   }, [meetings, search])
 
-  const selected: MeetingRow | null = meetings?.find(m => m.id === selectedId) ?? filtered[0] ?? null
-  const getColleague = (id: string) => colleagues?.find(c => c.id === id)
+  const selectedMeeting = meetings?.find(m => m.id === (selectedId ?? filtered[0]?.id)) || null
 
-  const filteredCR = useMemo(() => {
-    const q = crSearch.toLowerCase().trim()
-    if (!q) return null
-    const result: Record<string, string[]> = {}
-    for (const conf of CR_CONF) {
-      const items = parseItems(selected?.[conf.key])
-      result[conf.key] = items.filter(s => s.toLowerCase().includes(q))
-    }
-    return result
-  }, [crSearch, selected])
+  const handleSelect = (id: string) => {
+    setSelectedId(id)
+    if (isMobile) setMobileView('detail')
+  }
 
   const handleDelete = async (id: string) => {
     await deleteMeeting.mutateAsync(id)
     setDeleteConfirm(null)
-    if (selectedId === id) setSelectedId(null)
+    if (selectedId === id) {
+      setSelectedId(null)
+      setMobileView('list')
+    }
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--color-bg-app)', overflow: 'hidden' }}>
-
+    <div className="flex flex-col h-full bg-[var(--color-bg-app)] overflow-hidden">
+      
       {showModal   && <NewMeetingModal onClose={() => setShowModal(false)} />}
       {editMeeting && <EditMeetingModal meeting={editMeeting} onClose={() => setEditMeeting(null)} />}
 
-      {/* Delete confirm */}
+      {/* Delete confirm Dialog */}
       {deleteConfirm && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-overlay)' }}>
-          <div style={{ background: 'var(--color-bg-sidebar)', border: '1px solid var(--color-border2)', borderRadius: 16, padding: 24, maxWidth: 360, width: '100%', margin: '0 16px' }}>
-            <h3 style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-main)', marginBottom: 8 }}>Supprimer cette réunion ?</h3>
-            <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 20 }}>Cette action est irréversible. Les points d'action liés seront supprimés.</p>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setDeleteConfirm(null)} style={{ flex: 1, padding: '9px 0', fontSize: 13, color: 'var(--color-text-muted)', background: 'var(--color-bg-input)', border: '1px solid var(--color-border2)', borderRadius: 10, cursor: 'pointer' }}>Annuler</button>
-              <button onClick={() => handleDelete(deleteConfirm)} style={{ flex: 1, padding: '9px 0', fontSize: 13, fontWeight: 500, color: 'var(--color-text-main)', background: '#E24B4A', border: 'none', borderRadius: 10, cursor: 'pointer' }}>Supprimer</button>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+            <h3 className="text-lg font-bold text-[var(--color-text-main)] mb-2">Supprimer la réunion ?</h3>
+            <p className="text-sm text-[var(--color-text-muted)] mb-6">Cette action est irréversible et supprimera tout le contenu associé.</p>
+            <div className="flex gap-3">
+              <Button variant="default" className="flex-1" onClick={() => setDeleteConfirm(null)}>Annuler</Button>
+              <Button variant="destructive" className="flex-1" onClick={() => handleDelete(deleteConfirm)}>Supprimer</Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Topbar */}
-      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12, padding: '0 24px', height: 52, borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg-sidebar)' }}>
-        <h1 style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-main)', margin: 0 }}>Réunions</h1>
-        <span style={{ fontSize: 11, color: 'var(--color-text-faded)', fontFamily: 'monospace' }}>{meetings?.length ?? 0}</span>
-        <div style={{ marginLeft: 'auto' }}>
-          <button onClick={() => setShowModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', background: '#1D9E75', border: 'none', borderRadius: 8, color: 'var(--color-text-main)', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
-            <Plus style={{ width: 13, height: 13 }} /> Nouvelle réunion
-          </button>
-        </div>
-      </div>
-
-      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
-
-        {/* ── Left list ── */}
-        <div style={{ width: 270, flexShrink: 0, borderRight: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', background: 'var(--color-bg-app)' }}>
-          <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--color-border)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--color-bg-input)', border: '1px solid var(--color-border)', borderRadius: 8, padding: '0 10px', height: 32 }}>
-              <Search style={{ width: 12, height: 12, color: 'var(--color-text-faded)', flexShrink: 0 }} />
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher..."
-                style={{ flex: 1, background: 'transparent', border: 'none', fontSize: 12, color: 'var(--color-text-main)', outline: 'none' }} />
-              {search && <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-faded)', display: 'flex' }}><X style={{ width: 11, height: 11 }} /></button>}
+      {/* Main Container */}
+      <div className="flex flex-1 min-h-0 relative">
+        
+        {/* Master: List Pane */}
+        <aside className={`
+          flex-col transition-all duration-300 border-r border-[var(--color-border)] bg-[var(--color-bg-sidebar)]
+          ${isMobile ? (mobileView === 'list' ? 'flex w-full' : 'hidden') : 'flex w-72 md:w-80 lg:w-96'}
+        `}>
+          {/* List Header */}
+          <div className="p-4 border-b border-[var(--color-border)] bg-[var(--color-bg-sidebar)]/80 backdrop-blur-md sticky top-0 z-10">
+            <div className="flex items-center justify-between mb-4">
+              <h1 className="text-xl font-bold text-[var(--color-text-main)]">Réunions</h1>
+              <Button size="sm" variant="primary" onClick={() => setShowModal(true)} className="rounded-full w-8 h-8 p-0">
+                <Plus className="w-5 h-5" />
+              </Button>
             </div>
-            {search && filtered.length > 0 && (
-              <p style={{ fontSize: 10, color: 'var(--color-text-faded)', marginTop: 6, fontFamily: 'monospace' }}>{filtered.length} résultat{filtered.length > 1 ? 's' : ''}</p>
-            )}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-faded)]" />
+              <input 
+                value={search} onChange={e => setSearch(e.target.value)}
+                placeholder="Chercher une réunion..."
+                className="w-full bg-[var(--color-bg-input)] border border-[var(--color-border)] rounded-xl pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-[var(--color-brand)] transition-all"
+              />
+            </div>
           </div>
 
-          <div style={{ flex: 1, overflowY: 'auto' }}>
-            {isLoading && <div style={{ display: 'flex', justifyContent: 'center', padding: 32 }}><Spinner /></div>}
-            {!isLoading && filtered.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '48px 16px', color: 'var(--color-text-faded)', fontSize: 13 }}>
-                {search ? `Aucun résultat pour "${search}"` : 'Aucune réunion'}
+          {/* List Content */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar">
+            {isLoading ? (
+              <div className="flex justify-center py-12"><Spinner /></div>
+            ) : filtered.length === 0 ? (
+              <div className="py-20 text-center px-6">
+                <Calendar className="w-12 h-12 mx-auto mb-4 opacity-10" />
+                <p className="text-sm text-[var(--color-text-faded)]">Aucune réunion trouvée</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-[var(--color-border)]">
+                {filtered.map(m => {
+                  const isSelected = selectedMeeting?.id === m.id
+                  const d = new Date(m.date)
+                  const totalPoints = CR_CONF.reduce((acc, c) => acc + parseItems(m[c.key]).length, 0)
+                  
+                  return (
+                    <button 
+                      key={m.id} 
+                      onClick={() => handleSelect(m.id)}
+                      className={`
+                        w-full text-left p-4 transition-all hover:bg-[var(--color-bg-input)] group
+                        ${isSelected ? 'bg-[var(--color-brand)]/5 border-l-4 border-[var(--color-brand)]' : 'border-l-4 border-transparent'}
+                      `}
+                    >
+                      <div className="flex gap-4">
+                        <div className="flex flex-col items-center justify-center w-12 h-12 rounded-xl bg-[var(--color-bg-input)] border border-[var(--color-border)] flex-shrink-0">
+                          <span className="text-lg font-bold leading-none">{format(d, 'dd')}</span>
+                          <span className="text-[9px] uppercase font-bold text-[var(--color-text-faded)] mt-1">{format(d, 'MMM', { locale: fr })}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                             <h3 className={`text-sm font-bold truncate ${isSelected ? 'text-[var(--color-brand)]' : 'text-[var(--color-text-main)]'}`}>
+                               {m.title}
+                             </h3>
+                             <ChevronRight className={`w-4 h-4 text-[var(--color-text-faded)] transition-transform ${isSelected ? 'translate-x-1' : ''}`} />
+                          </div>
+                          <p className="text-[10px] text-[var(--color-text-faded)] font-mono mt-0.5 flex items-center gap-1">
+                            <Clock className="w-3 h-3" /> {format(d, 'HH:mm')}
+                          </p>
+                          {totalPoints > 0 && (
+                            <div className="flex gap-1.5 mt-2 flex-wrap">
+                               {CR_CONF.map(conf => {
+                                 const count = parseItems(m[conf.key]).length
+                                 if (count === 0) return null
+                                 return <div key={conf.key} className="w-2 h-2 rounded-full" style={{ backgroundColor: conf.color }} title={`${count} ${conf.label}`} />
+                               })}
+                               <span className="text-[9px] font-bold text-[var(--color-text-muted)] ml-1">{totalPoints} points</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  )
+                })}
               </div>
             )}
-            {filtered.map(m => {
-              const isSelected = (selectedId ?? filtered[0]?.id) === m.id
-              const d = new Date(m.date)
-              const sc = parseItems(m.successes).length
-              const fc = parseItems(m.failures).length
-              const pc = parseItems(m.sensitive_points).length
-              const rc = parseItems(m.relational_points).length
-              const ssec = parseItems(m.sse).length
-              const ic = parseItems(m.improvements).length
-              const hasMatch = search && [
-                ...parseItems(m.successes), ...parseItems(m.failures),
-                ...parseItems(m.sensitive_points), ...parseItems(m.relational_points),
-        ...parseItems(m.sse), ...parseItems(m.improvements),
-              ].some(s => s.toLowerCase().includes(search.toLowerCase()))
-
-              return (
-                <button key={m.id} onClick={() => setSelectedId(m.id)}
-                  style={{ width: '100%', textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid var(--color-border)', borderLeft: isSelected ? '2px solid #1D9E75' : '2px solid transparent', background: isSelected ? 'rgba(29,158,117,0.06)' : 'transparent', cursor: 'pointer', transition: 'all 0.12s' }}>
-                  <div style={{ display: 'flex', gap: 10 }}>
-                    <div style={{ width: 32, flexShrink: 0, textAlign: 'center', paddingTop: 2 }}>
-                      <div style={{ fontSize: 16, fontWeight: 600, color: isSelected ? '#1D9E75' : 'var(--color-text-main)', lineHeight: 1 }}>{format(d, 'd')}</div>
-                      <div style={{ fontSize: 9, color: 'var(--color-text-faded)', textTransform: 'uppercase', marginTop: 2, letterSpacing: '0.05em' }}>{format(d, 'MMM', { locale: fr })}</div>
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: 12, fontWeight: 500, color: isSelected ? 'var(--color-text-main)' : 'var(--color-text-main)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {m.title}
-                        {hasMatch && !m.title.toLowerCase().includes(search.toLowerCase()) && (
-                          <span style={{ marginLeft: 6, fontSize: 9, color: '#1D9E75', fontFamily: 'monospace' }}>dans le CR</span>
-                        )}
-                      </p>
-                      {format(d, 'HH:mm') !== '00:00' && (
-                        <p style={{ fontSize: 10, color: 'var(--color-text-faded)', margin: '2px 0 0', fontFamily: 'monospace' }}>{format(d, 'HH:mm')}</p>
-                      )}
-                      {(sc + fc + pc + rc + ssec + ic) > 0 && (
-                        <div style={{ display: 'flex', gap: 4, marginTop: 5, flexWrap: 'wrap' }}>
-                          {sc > 0 && <Pill color="#1D9E75">{sc} succès</Pill>}
-                          {fc > 0 && <Pill color="#E24B4A">{fc} défaut{fc > 1 ? 's' : ''}</Pill>}
-                          {pc > 0 && <Pill color="#EF9F27">{pc} sensible{pc > 1 ? 's' : ''}</Pill>}
-                          {rc > 0 && <Pill color="#7F77DD">{rc} rel.</Pill>}
-                          {ssec > 0 && <Pill color="#378ADD">{ssec} sse</Pill>}
-                          {ic > 0 && <Pill color="#D4537E">{ic} amélio.</Pill>}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </button>
-              )
-            })}
           </div>
-        </div>
+        </aside>
 
-        {/* ── Right detail ── */}
-        <div style={{ flex: 1, overflowY: 'auto', background: 'var(--color-bg-app)' }}>
-          {!selected ? (
-            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-faded)', fontSize: 13 }}>
-              Sélectionnez une réunion
+        {/* Detail: Content Pane */}
+        <main className={`
+          flex-1 flex flex-col bg-[var(--color-bg-app)] overflow-hidden
+          ${isMobile && mobileView === 'list' ? 'hidden' : 'flex'}
+        `}>
+          {!selectedMeeting ? (
+            <div className="flex-1 flex items-center justify-center p-8 text-center">
+              <div className="max-w-xs animate-in fade-in slide-in-from-bottom-4">
+                <div className="w-20 h-20 bg-[var(--color-bg-sidebar)] rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl border border-[var(--color-border)]">
+                  <MessageSquare className="w-10 h-10 text-[var(--color-brand)] opacity-50" />
+                </div>
+                <h2 className="text-lg font-bold mb-2">Aucune réunion sélectionnée</h2>
+                <p className="text-sm text-[var(--color-text-muted)]">Choisissez une réunion dans la liste pour consulter son compte-rendu et ses points d'action.</p>
+              </div>
             </div>
           ) : (
-            <DetailPanel
-              meeting={selected}
+            <DetailView 
+              meeting={selectedMeeting} 
+              onBack={() => setMobileView('list')} 
+              onEdit={() => setEditMeeting(selectedMeeting)}
+              onDelete={() => setDeleteConfirm(selectedMeeting.id)}
               colleagues={colleagues ?? []}
-              getColleague={getColleague}
-              onDelete={() => setDeleteConfirm(selected.id)}
-              onEdit={() => setEditMeeting(selected)}
-              crSearch={crSearch}
-              setCrSearch={setCrSearch}
-              filteredCR={filteredCR}
+              isMobile={isMobile}
             />
           )}
-        </div>
+        </main>
       </div>
     </div>
   )
 }
 
-// ─── Detail panel ─────────────────────────────────────────────────────────────
-function DetailPanel({ meeting, colleagues, getColleague, onDelete, onEdit, crSearch, setCrSearch, filteredCR }: {
-  meeting: MeetingRow; colleagues: any[]; getColleague: (id: string) => any
-  onDelete: () => void; onEdit: () => void
-  crSearch: string; setCrSearch: (v: string) => void
-  filteredCR: Record<string, string[]> | null
-}) {
-  const d = new Date(meeting.date)
-  const participantIds = meeting.colleagues_ids ?? []
+function DetailView({ meeting, onBack, onEdit, onDelete, colleagues, isMobile }: any) {
   const [exporting, setExporting] = useState(false)
-
+  const [crSearch, setCrSearch] = useState('')
   const { data: crItemsRaw } = useCRItems(meeting.id)
   const { data: actions } = useActions(meeting.id)
+  
+  const d = new Date(meeting.date)
+  
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      await exportMeetingPDF(meeting, colleagues, crItemsRaw ?? [], actions ?? [])
+      toast.success('PDF généré !')
+    } catch (err) {
+      toast.error('Erreur lors de la génération du PDF')
+    }
+    setExporting(false)
+  }
 
   const crAttributionMap = useMemo(() => {
     const map: Record<string, any> = {}
@@ -265,154 +273,127 @@ function DetailPanel({ meeting, colleagues, getColleague, onDelete, onEdit, crSe
     return map
   }, [crItemsRaw])
 
-  const stats = CR_CONF.map(c => ({ ...c, items: parseItems(meeting[c.key]) }))
-  const totalPoints = stats.reduce((a, b) => a + b.items.length, 0)
-
-  const handleExport = async () => {
-    setExporting(true)
-    await exportMeetingPDF(meeting, colleagues, crItemsRaw ?? [], actions ?? [])
-    setExporting(false)
-  }
-
   return (
-    <div>
-      {/* Hero header */}
-      <div style={{ padding: '28px 32px 24px', borderBottom: '1px solid var(--color-border)', position: 'relative', background: 'linear-gradient(180deg, rgba(29,158,117,0.04) 0%, transparent 100%)' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 16 }}>
-          {/* Big date block */}
-          <div style={{ width: 56, height: 56, flexShrink: 0, background: 'var(--color-bg-input)', border: '1px solid var(--color-border2)', borderRadius: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--color-text-main)', lineHeight: 1 }}>{format(d, 'd')}</span>
-            <span style={{ fontSize: 9, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 2 }}>{format(d, 'MMM yyyy', { locale: fr })}</span>
-          </div>
+    <div className="flex-1 flex flex-col min-h-0 bg-[var(--color-bg-app)]">
+      {/* Header Detail */}
+      <header className="flex-shrink-0 bg-[var(--color-bg-sidebar)] border-b border-[var(--color-border)] px-4 md:px-8 py-4 z-10">
+        <div className="flex items-center justify-between gap-4">
+           <div className="flex items-center gap-3">
+             {isMobile && (
+               <Button variant="default" size="sm" onClick={onBack} className="p-2 h-auto">
+                 <ChevronLeft className="w-5 h-5" />
+               </Button>
+             )}
+             <div>
+               <h2 className="text-lg md:text-xl font-bold text-[var(--color-text-main)] truncate max-w-[200px] md:max-w-md">
+                 {meeting.title}
+               </h2>
+               <div className="flex items-center gap-2 mt-1">
+                 <span className="text-xs text-[var(--color-text-muted)] flex items-center gap-1">
+                   <Calendar className="w-3 h-3" /> {format(d, 'EEEE d MMMM yyyy', { locale: fr })}
+                 </span>
+                 <span className="text-xs text-[var(--color-brand)] px-2 py-0.5 bg-[var(--color-brand)]/10 rounded-full font-bold">
+                   {format(d, 'HH:mm')}
+                 </span>
+               </div>
+             </div>
+           </div>
 
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <h2 style={{ fontSize: 20, fontWeight: 600, color: 'var(--color-text-main)', margin: 0, lineHeight: 1.2, letterSpacing: '-0.02em' }}>{meeting.title}</h2>
-            {meeting.description && <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '6px 0 0' }}>{meeting.description}</p>}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 8 }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--color-text-faded)', fontFamily: 'monospace' }}>
-                <Clock style={{ width: 11, height: 11 }} />
-                {format(d, 'HH:mm') !== '00:00' ? format(d, "EEEE d MMMM yyyy '·' HH:mm", { locale: fr }) : format(d, 'EEEE d MMMM yyyy', { locale: fr })}
-              </span>
-            </div>
-          </div>
-
-          {/* Action buttons */}
-          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-            {/* Export PDF */}
-            <button onClick={handleExport} disabled={exporting} title="Exporter en PDF"
-              style={{ padding: '7px 12px', background: 'rgba(29,158,117,0.1)', border: '1px solid rgba(29,158,117,0.25)', borderRadius: 8, cursor: exporting ? 'wait' : 'pointer', color: '#5DCAA5', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 500, transition: 'all 0.15s', opacity: exporting ? 0.6 : 1 }}
-              onMouseEnter={e => { if (!exporting) { (e.currentTarget as HTMLElement).style.background = 'rgba(29,158,117,0.18)' } }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(29,158,117,0.1)' }}>
-              <FileDown style={{ width: 13, height: 13 }} />
-              {exporting ? 'Export...' : 'PDF'}
-            </button>
-            {/* Éditer */}
-            <button onClick={onEdit} title="Modifier la réunion"
-              style={{ padding: 8, background: 'rgba(239,159,39,0.08)', border: '1px solid rgba(239,159,39,0.2)', borderRadius: 8, cursor: 'pointer', color: '#FAC775', display: 'flex', transition: 'all 0.15s' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,159,39,0.16)' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,159,39,0.08)' }}>
-              <Pencil style={{ width: 13, height: 13 }} />
-            </button>
-            {/* Supprimer */}
-            <button onClick={onDelete} title="Supprimer la réunion"
-              style={{ padding: 8, background: 'none', border: '1px solid transparent', borderRadius: 8, cursor: 'pointer', color: 'var(--color-text-faded)', display: 'flex', transition: 'all 0.15s' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#E24B4A'; (e.currentTarget as HTMLElement).style.borderColor = '#E24B4A30'; (e.currentTarget as HTMLElement).style.background = '#E24B4A10' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--color-text-faded)'; (e.currentTarget as HTMLElement).style.borderColor = 'transparent'; (e.currentTarget as HTMLElement).style.background = 'none' }}>
-              <Trash2 style={{ width: 14, height: 14 }} />
-            </button>
-          </div>
+           <div className="flex items-center gap-2">
+              <Button size="sm" variant="default" onClick={onEdit} className="hidden sm:flex">
+                <Pencil className="w-4 h-4 mr-2" /> Éditer
+              </Button>
+              <Button size="sm" variant="primary" onClick={handleExport} disabled={exporting}>
+                {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4 sm:mr-2" />}
+                <span className="hidden sm:inline">Exporter</span>
+              </Button>
+              <Button size="sm" variant="destructive" onClick={onDelete} className="p-2 h-auto">
+                <Trash2 className="w-4 h-4" />
+              </Button>
+           </div>
         </div>
+      </header>
 
-        {/* Stats row */}
-        {totalPoints > 0 && (
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {stats.filter(s => s.items.length > 0).map(s => (
-              <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, background: s.light, border: `1px solid ${s.border}` }}>
-                <s.icon style={{ width: 10, height: 10, color: s.color }} />
-                <span style={{ fontSize: 11, color: s.color, fontFamily: 'monospace' }}>{s.items.length} {s.label.toLowerCase()}</span>
-              </div>
-            ))}
-          </div>
+      {/* Detail Scrollable Content */}
+      <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 custom-scrollbar pb-24">
+        
+        {/* Participants Section */}
+        {meeting.colleagues_ids?.length > 0 && (
+          <section className="animate-in fade-in slide-in-from-top-2 duration-300">
+             <div className="flex items-center gap-2 mb-4">
+                <Users className="w-4 h-4 text-[var(--color-text-faded)]" />
+                <h4 className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)]">Participants ({meeting.colleagues_ids.length})</h4>
+             </div>
+             <div className="flex flex-wrap gap-2">
+                {meeting.colleagues_ids.map((id: string) => {
+                  const c = colleagues.find((col: any) => col.id === id)
+                  if (!c) return null
+                  return (
+                    <div key={id} className="flex items-center gap-2 px-3 py-1.5 bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded-full shadow-sm">
+                      <Avatar name={c.name} size="xs" />
+                      <span className="text-xs font-medium">{c.name}</span>
+                    </div>
+                  )
+                })}
+             </div>
+          </section>
         )}
-      </div>
 
-      {/* Participants */}
-      {participantIds.length > 0 && (
-        <div style={{ padding: '20px 32px', borderBottom: '1px solid var(--color-border)' }}>
-          <SectionTitle icon={Users} label={`Participants · ${participantIds.length}`} />
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
-            {participantIds.map((id: string) => {
-              const c = getColleague(id)
-              if (!c) return null
-              return (
-                <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderRadius: 10, background: 'var(--color-bg-input)', border: '1px solid var(--color-border)' }}>
-                  <Avatar name={c.name} size="sm" />
-                  <div>
-                    <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-main)', margin: 0 }}>{c.name}</p>
-                    <p style={{ fontSize: 10, color: 'var(--color-text-faded)', margin: 0, fontFamily: 'monospace' }}>{c.post}</p>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Compte-rendu */}
-      {totalPoints > 0 && (
-        <div style={{ padding: '20px 32px', borderBottom: '1px solid var(--color-border)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-            <SectionTitle icon={FileText} label="Compte-rendu" />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--color-bg-input)', border: '1px solid var(--color-border)', borderRadius: 8, padding: '4px 10px', height: 28 }}>
-              <Search style={{ width: 11, height: 11, color: 'var(--color-text-faded)', flexShrink: 0 }} />
-              <input value={crSearch} onChange={e => setCrSearch(e.target.value)} placeholder="Filtrer le CR..."
-                style={{ background: 'transparent', border: 'none', fontSize: 11, color: 'var(--color-text-main)', outline: 'none', width: 120 }} />
-              {crSearch && <button onClick={() => setCrSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-faded)', display: 'flex' }}><X style={{ width: 10, height: 10 }} /></button>}
-            </div>
+        {/* Compte Rendu Grid */}
+        <section className="animate-in fade-in slide-in-from-top-4 duration-500 delay-150">
+          <div className="flex items-center justify-between mb-4">
+             <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-[var(--color-text-faded)]" />
+                <h4 className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)]">Compte-rendu</h4>
+             </div>
+             <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-[var(--color-text-faded)]" />
+                <input 
+                  value={crSearch} onChange={e => setCrSearch(e.target.value)}
+                  placeholder="Filtrer les points..."
+                  className="bg-[var(--color-bg-input)] border border-[var(--color-border)] rounded-lg pl-8 pr-3 py-1 text-[11px] focus:outline-none focus:border-[var(--color-brand)] w-40"
+                />
+             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {CR_CONF.map(conf => {
               const rawItems = parseItems(meeting[conf.key])
-              const items = filteredCR ? (filteredCR[conf.key] ?? []) : rawItems
+              const displayItems = crSearch ? rawItems.filter(s => s.toLowerCase().includes(crSearch.toLowerCase())) : rawItems
               if (rawItems.length === 0) return null
               const Icon = conf.icon
+
               return (
-                <div key={conf.key} style={{ borderRadius: 12, overflow: 'hidden', border: `1px solid ${conf.border}`, background: conf.light }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 14px', borderBottom: `1px solid ${conf.border}`, background: `${conf.color}10` }}>
-                    <Icon style={{ width: 11, height: 11, color: conf.color, flexShrink: 0 }} />
-                    <span style={{ fontSize: 10, fontWeight: 600, color: conf.color, fontFamily: 'monospace', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{conf.label}</span>
-                    <span style={{ marginLeft: 'auto', fontSize: 10, color: conf.color, opacity: 0.6, fontFamily: 'monospace' }}>{rawItems.length}</span>
+                <div key={conf.key} className="flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] overflow-hidden shadow-sm group">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)]" style={{ backgroundColor: `${conf.color}08` }}>
+                    <div className="flex items-center gap-2">
+                      <Icon className="w-4 h-4" style={{ color: conf.color }} />
+                      <span className="text-xs font-bold uppercase tracking-tight" style={{ color: conf.color }}>{conf.label}</span>
+                    </div>
+                    <span className="text-[10px] font-mono opacity-50">{rawItems.length}</span>
                   </div>
-                  <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {items.length === 0 && crSearch ? (
-                      <p style={{ fontSize: 11, color: 'var(--color-text-faded)', fontStyle: 'italic', margin: 0 }}>Aucun résultat</p>
-                    ) : items.map((item, i) => {
+                  <div className="p-4 space-y-3">
+                    {displayItems.length === 0 && crSearch ? (
+                      <p className="text-[11px] text-[var(--color-text-faded)] italic">Aucun résultat</p>
+                    ) : displayItems.map((item, i) => {
                       const attributed = crAttributionMap[item.trim()]
-                      const initials = attributed?.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) ?? ''
-                      const avatarColors = [
-                        { bg: '#1D9E7520', color: '#5DCAA5' }, { bg: '#7F77DD20', color: '#AFA9EC' },
-                        { bg: '#378ADD20', color: '#85B7EB' }, { bg: '#EF9F2720', color: '#FAC775' },
-                        { bg: '#E24B4A20', color: '#F09595' }, { bg: '#D4537E20', color: '#ED93B1' },
-                      ]
-                      const ac = attributed ? avatarColors[attributed.name.charCodeAt(0) % avatarColors.length] : null
                       return (
-                        <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '4px 0', borderBottom: i < items.length - 1 ? '1px solid var(--color-border)' : 'none' }}>
-                          <div style={{ width: 4, height: 4, borderRadius: '50%', background: conf.color, flexShrink: 0, marginTop: 6, opacity: 0.8 }} />
-                          <p style={{ flex: 1, fontSize: 12, color: 'var(--color-text-main)', margin: 0, lineHeight: 1.5, ...(crSearch && item.toLowerCase().includes(crSearch.toLowerCase()) ? { background: `${conf.color}25`, borderRadius: 4, padding: '0 3px' } : {}) }}>
-                            {crSearch && item.toLowerCase().includes(crSearch.toLowerCase()) ? highlightText(item, crSearch, conf.color) : item}
-                          </p>
-                          {attributed && ac && (
-                            <div title={`Attribué à ${attributed.name}`}
-                              style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0, padding: '1px 7px', borderRadius: 20, background: ac.bg, border: `1px solid ${ac.color}30` }}>
-                              <div style={{ width: 14, height: 14, borderRadius: '50%', background: ac.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, fontWeight: 700, color: ac.color, flexShrink: 0 }}>
-                                {initials}
+                        <div key={i} className={`flex gap-3 pb-3 ${i < displayItems.length - 1 ? 'border-b border-[var(--color-border)]/50' : ''}`}>
+                          <div className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0" style={{ backgroundColor: conf.color }} />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm leading-relaxed text-[var(--color-text-main)]">
+                               {item}
+                            </p>
+                            {attributed && (
+                              <div className="mt-2 flex items-center gap-2">
+                                <span className="text-[9px] text-[var(--color-text-faded)] uppercase tracking-widest font-bold">Attribué à</span>
+                                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-gray-500/5 rounded-full border border-[var(--color-border)]">
+                                   <Avatar name={attributed.name} size="xs" />
+                                   <span className="text-[10px] font-medium text-[var(--color-text-muted)]">{attributed.name.split(' ')[0]}</span>
+                                </div>
                               </div>
-                              <span style={{ fontSize: 10, color: ac.color, fontFamily: 'monospace', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                                {attributed.name.split(' ')[0]}
-                              </span>
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </div>
                       )
                     })}
@@ -421,36 +402,14 @@ function DetailPanel({ meeting, colleagues, getColleague, onDelete, onEdit, crSe
               )
             })}
           </div>
-        </div>
-      )}
+        </section>
 
-      {/* Actions */}
-      <div style={{ padding: '20px 32px 32px' }}>
-        <MeetingActionsPanel meetingId={meeting.id} />
+        {/* Linked Actions */}
+        <section className="animate-in fade-in slide-in-from-top-4 duration-500 delay-300">
+           <MeetingActionsPanel meetingId={meeting.id} />
+        </section>
+
       </div>
-    </div>
-  )
-}
-
-function highlightText(text: string, query: string, color: string): React.ReactNode {
-  const idx = text.toLowerCase().indexOf(query.toLowerCase())
-  if (idx === -1) return text
-  return (
-    <>{text.slice(0, idx)}<mark style={{ background: color + '40', color: 'var(--color-text-main)', borderRadius: 2, padding: '0 1px' }}>{text.slice(idx, idx + query.length)}</mark>{text.slice(idx + query.length)}</>
-  )
-}
-
-function Pill({ color, children }: { color: string; children: React.ReactNode }) {
-  return (
-    <span style={{ fontSize: 9, color, background: color + '15', border: `1px solid ${color}25`, borderRadius: 20, padding: '2px 7px', fontFamily: 'monospace' }}>{children}</span>
-  )
-}
-
-function SectionTitle({ icon: Icon, label }: { icon: React.ElementType; label: string }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-      <Icon style={{ width: 12, height: 12, color: 'var(--color-text-faded)' }} />
-      <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'monospace' }}>{label}</span>
     </div>
   )
 }
@@ -464,69 +423,89 @@ function MeetingActionsPanel({ meetingId }: { meetingId: string }) {
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault(); if (!desc.trim()) return
-    await createAction.mutateAsync({ description: desc.trim(), assigned_to_colleague_id: assignTo || null, due_date: dueDate || null, meeting_id: meetingId, status: 'pending' })
+    await createAction.mutateAsync({ 
+      description: desc.trim(), 
+      assigned_to_colleague_id: assignTo || null, 
+      due_date: dueDate || null, 
+      meeting_id: meetingId, 
+      status: 'pending' 
+    })
+    toast.success('Action créée !')
     setDesc(''); setAssignTo(''); setDueDate(''); setShowAdd(false)
   }
 
   if (isLoading) return <Spinner />
 
   return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <SectionTitle icon={Check} label={`Actions · ${actions?.length ?? 0}`} />
-        <button onClick={() => setShowAdd(!showAdd)}
-          style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#1D9E75', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'monospace' }}>
-          <Plus style={{ width: 11, height: 11 }} /> Ajouter
-        </button>
+    <div className="bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded-2xl p-6 shadow-sm">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2">
+           <Check className="w-4 h-4 text-green-500" />
+           <h4 className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)]">Actions liées ({actions?.length ?? 0})</h4>
+        </div>
+        <Button size="sm" variant="default" onClick={() => setShowAdd(!showAdd)}>
+           {showAdd ? 'Annuler' : 'Ajouter une action'}
+        </Button>
       </div>
 
       {showAdd && (
-        <form onSubmit={handleAdd} style={{ marginBottom: 12, padding: 14, background: 'var(--color-bg-input)', border: '1px solid var(--color-border)', borderRadius: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <input value={desc} onChange={e => setDesc(e.target.value)} placeholder="Description de l'action..." required autoFocus
-            style={{ width: '100%', background: 'var(--color-bg-input)', border: '1px solid var(--color-border2)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--color-text-main)', outline: 'none', boxSizing: 'border-box' }} />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <select value={assignTo} onChange={e => setAssignTo(e.target.value)}
-              style={{ background: 'var(--color-bg-input)', border: '1px solid var(--color-border2)', borderRadius: 8, padding: '6px 10px', fontSize: 12, color: 'var(--color-text-main)', outline: 'none' }}>
-              <option value="">Assigner à...</option>
-              {colleagues?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-            <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
-              style={{ background: 'var(--color-bg-input)', border: '1px solid var(--color-border2)', borderRadius: 8, padding: '6px 10px', fontSize: 12, color: 'var(--color-text-main)', outline: 'none' }} />
+        <form onSubmit={handleAdd} className="mb-6 p-4 bg-[var(--color-bg-input)] rounded-xl border border-[var(--color-brand)]/20 animate-in slide-in-from-top-2">
+          <textarea 
+            value={desc} onChange={e => setDesc(e.target.value)} 
+            placeholder="Quelle action faut-il mener ?" required autoFocus
+            className="w-full bg-transparent border-none text-sm focus:outline-none min-h-[80px] mb-4"
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+             <select value={assignTo} onChange={e => setAssignTo(e.target.value)} className="bg-[var(--color-bg-sidebar)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-xs focus:outline-none">
+                <option value="">Assigner à...</option>
+                {colleagues?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+             </select>
+             <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="bg-[var(--color-bg-sidebar)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-xs focus:outline-none" />
           </div>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button type="button" onClick={() => setShowAdd(false)} style={{ padding: '6px 12px', fontSize: 12, color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}>Annuler</button>
-            <button type="submit" style={{ padding: '6px 14px', fontSize: 12, fontWeight: 500, color: 'var(--color-text-main)', background: '#1D9E75', border: 'none', borderRadius: 8, cursor: 'pointer' }}>Créer</button>
+          <div className="flex justify-end">
+             <Button type="submit" variant="primary" disabled={!desc.trim() || createAction.isPending}>
+               {createAction.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Créer l\'action'}
+             </Button>
           </div>
         </form>
       )}
 
-      {(actions?.length ?? 0) === 0 && !showAdd && (
-        <p style={{ fontSize: 12, color: 'var(--color-text-faded)', textAlign: 'center', padding: '16px 0' }}>Aucune action liée à cette réunion</p>
-      )}
+      <div className="space-y-3">
+        {actions?.length === 0 && !showAdd && (
+          <p className="py-8 text-center text-sm text-[var(--color-text-faded)] italic">Aucune action liée à cette réunion.</p>
+        )}
+        {actions?.map((a: any) => {
+          const c = colleagues?.find((col: any) => col.id === a.assigned_to_colleague_id)
+          const done = a.status === 'completed'
+          const late = a.due_date ? isOverdue(a.due_date) && !done : false
 
-      {(actions?.length ?? 0) > 0 && (
-        <div style={{ borderRadius: 12, border: '1px solid var(--color-border)', overflow: 'hidden' }}>
-          {actions!.map((a: any, i: number) => {
-            const c = colleagues?.find((col: any) => col.id === a.assigned_to_colleague_id)
-            const late = a.due_date ? isOverdue(a.due_date) && a.status !== 'completed' : false
-            const done = a.status === 'completed'
-            const st = ACTION_STATUS[a.status]
-            return (
-              <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderBottom: i < actions!.length - 1 ? '1px solid var(--color-border)' : 'none', background: 'var(--color-bg-card)' }}>
-                <div style={{ width: 6, height: 6, borderRadius: '50%', flexShrink: 0, background: done ? '#1D9E75' : late ? '#E24B4A' : '#EF9F27' }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 13, color: done ? 'var(--color-text-faded)' : 'var(--color-text-main)', margin: 0, textDecoration: done ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.description}</p>
-                  <div style={{ display: 'flex', gap: 12, marginTop: 3 }}>
-                    {c && <span style={{ fontSize: 10, color: 'var(--color-text-faded)', fontFamily: 'monospace' }}>{c.name}</span>}
-                    {a.due_date && <span style={{ fontSize: 10, color: late ? '#E24B4A' : 'var(--color-text-faded)', fontFamily: 'monospace' }}>{fDate(a.due_date)}</span>}
+          return (
+            <div key={a.id} className={`flex items-start gap-3 p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-sidebar)] transition-all ${done ? 'opacity-60' : ''}`}>
+               <div className={`mt-1.5 w-4 h-4 rounded-full border flex-shrink-0 flex items-center justify-center ${done ? 'bg-green-500 border-green-500' : 'bg-transparent border-[var(--color-border)]'}`}>
+                 {done && <Check className="w-2.5 h-2.5 text-white" />}
+               </div>
+               <div className="flex-1 min-w-0">
+                  <p className={`text-sm ${done ? 'line-through text-[var(--color-text-faded)]' : 'text-[var(--color-text-main)]'}`}>
+                    {a.description}
+                  </p>
+                  <div className="flex items-center gap-3 mt-2">
+                    {c && (
+                      <div className="flex items-center gap-1">
+                        <Avatar name={c.name} size="xs" />
+                        <span className="text-[10px] font-medium text-[var(--color-text-muted)]">{c.name}</span>
+                      </div>
+                    )}
+                    {a.due_date && (
+                      <span className={`text-[10px] font-mono ${late ? 'text-red-500 font-bold' : 'text-[var(--color-text-faded)]'}`}>
+                        {fDate(a.due_date)}
+                      </span>
+                    )}
                   </div>
-                </div>
-                <span style={{ fontSize: 10, color: st?.color === 'teal' ? '#1D9E75' : st?.color === 'red' ? '#E24B4A' : st?.color === 'amber' ? '#EF9F27' : 'var(--color-text-faded)', background: 'var(--color-bg-input)', borderRadius: 20, padding: '2px 8px', fontFamily: 'monospace', flexShrink: 0 }}>{st?.label}</span>
-              </div>
-            )
-          })}
-        </div>
-      )}
+               </div>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

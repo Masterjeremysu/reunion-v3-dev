@@ -1,11 +1,11 @@
-import React, { useState, useMemo } from 'react'
-import { Car, Plus, AlertTriangle, CheckCircle, X, Flame } from 'lucide-react'
+import React, { useState, useMemo, useEffect } from 'react'
+import { Car, Plus, AlertTriangle, CheckCircle, X, Flame, Search, ChevronRight, ChevronLeft, Info, Calendar } from 'lucide-react'
 import { useVehicles, useAllInspections } from './useVehicles'
 import { vehicleUrgency, urgencyLevel } from './utils'
 import { VehicleCard } from './VehicleCard'
 import { VehicleDetail } from './VehicleDetail'
 import { VehicleForm } from './VehicleForm'
-import { Spinner } from '../../components/ui'
+import { Spinner, Button } from '../../components/ui'
 
 export function VehiclesPage() {
   const { data: vehicles, isLoading: vLoading } = useVehicles()
@@ -13,18 +13,25 @@ export function VehiclesPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [showAddVehicle, setShowAddVehicle] = useState(false)
   const [search, setSearch] = useState('')
+  const [mobileView, setMobileView] = useState<'list' | 'detail'>('list')
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
 
-  const selectedVehicle = vehicles?.find(v => v.id === selectedId) ?? vehicles?.[0] ?? null
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  const selectedVehicle = vehicles?.find(v => v.id === (selectedId ?? vehicles?.[0]?.id)) || null
+  
   const getVehicleInspections = (vid: string) => (allInspections ?? []).filter((i: any) => i.vehicle_id === vid)
-  const vehicleInspections = selectedVehicle ? getVehicleInspections(selectedVehicle.id) : []
+  const selectedInspections = selectedVehicle ? getVehicleInspections(selectedVehicle.id) : []
 
   const globalStats = useMemo(() => {
     const all = allInspections ?? []
     const expired = all.filter((i: any) => i.status === 'overdue').length
     const warn = all.filter((i: any) => urgencyLevel(i) === 'warn').length
-    const soon = all.filter((i: any) => urgencyLevel(i) === 'soon').length
-    const ok = all.filter((i: any) => urgencyLevel(i) === 'ok').length
-    return { total: vehicles?.length ?? 0, expired, warn, soon, ok, totalInsp: all.length }
+    return { total: vehicles?.length ?? 0, expired, warn }
   }, [vehicles, allInspections])
 
   const filteredVehicles = useMemo(() => {
@@ -34,114 +41,115 @@ export function VehiclesPage() {
       .sort((a: any, b: any) => order.indexOf(vehicleUrgency(getVehicleInspections(a.id))) - order.indexOf(vehicleUrgency(getVehicleInspections(b.id))))
   }, [vehicles, allInspections, search])
 
+  const handleSelect = (id: string) => {
+    setSelectedId(id)
+    if (isMobile) setMobileView('detail')
+  }
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--color-bg-app)', overflow: 'hidden' }}>
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.85)} }
-        @keyframes slideIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
-        input[type=date]::-webkit-calendar-picker-indicator { filter: invert(0.5); cursor: pointer; }
-        select option { background: var(--color-bg-card); color: var(--color-text-main); }
-        ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 2px; }
-      `}</style>
-
-      {/* Topbar */}
-      <div style={{ flexShrink: 0, padding: '0 24px', height: 60, borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg-sidebar)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', gap: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 9, background: 'rgba(29,158,117,0.15)', border: '1px solid rgba(29,158,117,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Car style={{ width: 15, height: 15, color: '#1D9E75' }} />
-          </div>
-          <div>
-            <h1 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text-main)', margin: 0 }}>Parc automobile</h1>
-            <p style={{ fontSize: 10, color: 'var(--color-text-faded)', margin: 0, fontFamily: 'monospace' }}>{globalStats.total} véhicule{globalStats.total > 1 ? 's' : ''} · {globalStats.totalInsp} inspection{globalStats.totalInsp > 1 ? 's' : ''}</p>
-          </div>
-        </div>
-
-        {/* KPI badges */}
-        <div style={{ display: 'flex', gap: 8, marginLeft: 8 }}>
-          {globalStats.expired > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', background: '#E24B4A12', border: '1px solid #E24B4A30', borderRadius: 20 }}>
-              <Flame style={{ width: 10, height: 10, color: '#F09595', animation: 'pulse 1.5s ease-in-out infinite' }} />
-              <span style={{ fontSize: 11, color: '#F09595', fontFamily: 'monospace', fontWeight: 600 }}>{globalStats.expired} expirée{globalStats.expired > 1 ? 's' : ''}</span>
+    <div className="flex flex-col h-full bg-[var(--color-bg-app)] overflow-hidden">
+      
+      {/* Main Container */}
+      <div className="flex flex-1 min-h-0 relative">
+        
+        {/* Sidebar: List */}
+        <aside className={`
+          flex-col transition-all duration-300 border-r border-[var(--color-border)] bg-[var(--color-bg-sidebar)]
+          ${isMobile ? (mobileView === 'list' ? 'flex w-full' : 'hidden') : 'flex w-72 md:w-80 lg:w-96'}
+        `}>
+          {/* Header */}
+          <div className="p-4 border-b border-[var(--color-border)] bg-[var(--color-bg-sidebar)]/80 backdrop-blur-md sticky top-0 z-10">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h1 className="text-xl font-bold text-[var(--color-text-main)]">Véhicules</h1>
+                <p className="text-[10px] text-[var(--color-text-faded)] font-mono uppercase tracking-wider">{filteredVehicles.length} véhicules actifs</p>
+              </div>
+              <Button size="sm" variant="primary" onClick={() => setShowAddVehicle(true)} className="rounded-full w-10 h-10 p-0 shadow-lg shadow-green-500/20">
+                <Plus className="w-6 h-6" />
+              </Button>
             </div>
-          )}
-          {globalStats.warn > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', background: '#EF9F2712', border: '1px solid #EF9F2730', borderRadius: 20 }}>
-              <AlertTriangle style={{ width: 10, height: 10, color: '#FAC775' }} />
-              <span style={{ fontSize: 11, color: '#FAC775', fontFamily: 'monospace' }}>{globalStats.warn} urgente{globalStats.warn > 1 ? 's' : ''}</span>
-            </div>
-          )}
-          {globalStats.expired === 0 && globalStats.warn === 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', background: '#1D9E7512', border: '1px solid #1D9E7530', borderRadius: 20 }}>
-              <CheckCircle style={{ width: 10, height: 10, color: '#5DCAA5' }} />
-              <span style={{ fontSize: 11, color: '#5DCAA5', fontFamily: 'monospace' }}>Parc conforme</span>
-            </div>
-          )}
-        </div>
 
-        <button onClick={() => setShowAddVehicle(true)} style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', background: '#1D9E75', border: 'none', borderRadius: 9, color: 'var(--color-text-main)', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'opacity 0.15s' }}
-          onMouseEnter={e => (e.currentTarget.style.opacity = '0.85')}
-          onMouseLeave={e => (e.currentTarget.style.opacity = '1')}>
-          <Plus style={{ width: 13, height: 13 }} /> Nouveau véhicule
-        </button>
-      </div>
+            <div className="flex gap-2 mb-4">
+               {globalStats.expired > 0 && (
+                 <div className="flex items-center gap-1.5 px-2 py-1 bg-red-500/10 border border-red-500/20 rounded-lg text-[10px] font-bold text-red-500 animate-pulse">
+                    <Flame className="w-3 h-3" /> {globalStats.expired} expirés
+                 </div>
+               )}
+               {globalStats.warn > 0 && (
+                 <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded-lg text-[10px] font-bold text-amber-500">
+                    <AlertTriangle className="w-3 h-3" /> {globalStats.warn} urgences
+                 </div>
+               )}
+            </div>
 
-      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
-        {/* Sidebar */}
-        <div style={{ width: 290, flexShrink: 0, borderRight: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', background: 'var(--color-bg-app)' }}>
-          <div style={{ padding: '12px 12px 8px' }}>
-            <div style={{ position: 'relative' }}>
-              <input
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-faded)]" />
+              <input 
                 value={search} onChange={e => setSearch(e.target.value)}
-                placeholder="Rechercher un véhicule..."
-                style={{ width: '100%', background: 'var(--color-bg-input)', border: '1px solid var(--color-border)', borderRadius: 9, padding: '8px 12px', fontSize: 12, color: 'var(--color-text-main)', outline: 'none', boxSizing: 'border-box', fontFamily: 'monospace' }}
+                placeholder="Immat, Marque, Nom..."
+                className="w-full bg-[var(--color-bg-input)] border border-[var(--color-border)] rounded-xl pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-[var(--color-brand)] transition-all"
               />
-              {search && (
-                <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 2 }}>
-                  <X style={{ width: 12, height: 12 }} />
-                </button>
-              )}
             </div>
           </div>
 
-          {showAddVehicle && (
-            <div style={{ borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg-card)', animation: 'slideIn 0.15s ease' }}>
-              <VehicleForm onClose={() => setShowAddVehicle(false)} />
-            </div>
-          )}
-
-          <div style={{ flex: 1, overflowY: 'auto' }}>
-            {vLoading && <div style={{ display: 'flex', justifyContent: 'center', padding: 32 }}><Spinner /></div>}
-            {!vLoading && filteredVehicles.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '48px 16px', color: 'var(--color-text-faded)', fontSize: 13 }}>
-                <Car style={{ width: 32, height: 32, margin: '0 auto 12px', opacity: 0.2, display: 'block' }} />
-                {search ? 'Aucun résultat' : 'Aucun véhicule'}
+          {/* List Content */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar">
+            {vLoading ? (
+              <div className="flex justify-center py-12"><Spinner /></div>
+            ) : showAddVehicle ? (
+              <div className="bg-[var(--color-bg-card)] border-b border-[var(--color-border)] animate-in slide-in-from-top-4">
+                <VehicleForm onClose={() => setShowAddVehicle(false)} />
+              </div>
+            ) : filteredVehicles.length === 0 ? (
+              <div className="py-20 text-center px-6 grayscale">
+                <Car className="w-12 h-12 mx-auto mb-4 opacity-10" />
+                <p className="text-sm text-[var(--color-text-faded)]">Aucun véhicule trouvé</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-[var(--color-border)]/50">
+                {filteredVehicles.map((v: any) => (
+                  <VehicleCard
+                    key={v.id}
+                    vehicle={v}
+                    inspections={getVehicleInspections(v.id)}
+                    isSelected={selectedVehicle?.id === v.id}
+                    onClick={() => handleSelect(v.id)}
+                  />
+                ))}
               </div>
             )}
-            {filteredVehicles.map((v: any) => (
-              <VehicleCard
-                key={v.id} vehicle={v}
-                inspections={getVehicleInspections(v.id)}
-                isSelected={(selectedId ?? vehicles?.[0]?.id) === v.id}
-                onClick={() => setSelectedId(v.id)}
-              />
-            ))}
           </div>
-        </div>
+        </aside>
 
-        {/* Main detail panel */}
-        {!selectedVehicle ? (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, color: 'var(--color-text-faded)' }}>
-            <Car style={{ width: 40, height: 40, opacity: 0.15 }} />
-            <span style={{ fontSize: 13 }}>Sélectionnez un véhicule</span>
-          </div>
-        ) : (
-          <VehicleDetail 
-            vehicle={selectedVehicle} 
-            inspections={vehicleInspections} 
-            onClearSelection={() => setSelectedId(null)} 
-          />
-        )}
+        {/* Detail Panel */}
+        <main className={`
+          flex-1 flex flex-col bg-[var(--color-bg-app)] overflow-hidden
+          ${isMobile && mobileView === 'list' ? 'hidden' : 'flex'}
+        `}>
+          {!selectedVehicle ? (
+            <div className="flex-1 flex items-center justify-center p-8 text-center">
+              <div className="max-w-xs grayscale opacity-30">
+                <Car className="w-20 h-20 mx-auto mb-6" />
+                <h2 className="text-lg font-bold">Sélectionnez un véhicule</h2>
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col min-h-0">
+               {isMobile && (
+                 <div className="p-4 bg-[var(--color-bg-sidebar)] border-b border-[var(--color-border)] text-[var(--color-brand)] font-bold flex items-center gap-2" onClick={() => setMobileView('list')}>
+                   <ChevronLeft className="w-5 h-5" /> Retour à la liste
+                 </div>
+               )}
+               <div className="flex-1 overflow-y-auto custom-scrollbar">
+                 <VehicleDetail 
+                   vehicle={selectedVehicle} 
+                   inspections={selectedInspections} 
+                   onClearSelection={() => isMobile ? setMobileView('list') : setSelectedId(null)} 
+                 />
+               </div>
+            </div>
+          )}
+        </main>
       </div>
     </div>
   )

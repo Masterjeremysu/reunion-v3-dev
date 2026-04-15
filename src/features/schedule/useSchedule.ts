@@ -158,5 +158,30 @@ export function useScheduleMutations() {
     }
   })
 
-  return { createTeam, createMission, updateMission, deleteMission, deleteTeam }
+  const updateTeam = useMutation({
+    mutationFn: async (payload: { id: string; name?: string; color?: string; leader_id?: string | null; member_ids?: string[] }) => {
+      const { id, member_ids, ...updates } = payload
+      // 1. Update team fields
+      if (Object.keys(updates).length > 0) {
+        const { error } = await (supabase.from('teams') as any).update(updates).eq('id', id)
+        if (error) throw error
+      }
+      // 2. Sync members if provided
+      if (member_ids !== undefined) {
+        // Delete existing members
+        const { error: delErr } = await (supabase.from('team_members') as any).delete().eq('team_id', id)
+        if (delErr) throw delErr
+        // Reinsert new members
+        if (member_ids.length > 0) {
+          const { error: insErr } = await (supabase.from('team_members') as any).insert(
+            member_ids.map(colleague_id => ({ team_id: id, colleague_id }))
+          )
+          if (insErr) throw insErr
+        }
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['teams'] })
+  })
+
+  return { createTeam, createMission, updateMission, deleteMission, deleteTeam, updateTeam }
 }
