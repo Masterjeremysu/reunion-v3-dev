@@ -1,73 +1,97 @@
-# Réunions GT — v2
+# 🚀 Réunions GT v3 — Logistics SaaS Platform
 
-Application de gestion d'équipe : réunions, actions, collègues, parc auto, consommables, baromètre.
+![Version](https://img.shields.io/badge/version-3.0.0-6366f1)
+![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![Supabase](https://img.shields.io/badge/Supabase-181818?style=for-the-badge&logo=supabase&logoColor=3ECF8E)
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white)
 
-## Stack
+**Réunions GT v3** est une solution SaaS **Multi-Tenant** moderne conçue pour les responsables d'activité. Elle permet de piloter des équipes, organiser des réunions, gérer un parc automobile et suivre les consommables, le tout dans un environnement sécurisé et ultra-rapide.
 
-- **React 18** + **TypeScript 5** + **Vite**
-- **Supabase** — base de données existante (même projet que v1)
-- **React Query v5** — cache, sync, mutations
-- **Tailwind CSS** — design system dark premium
-- **React Router v6** — navigation
-- **Recharts** — graphiques dashboard
-- **Sonner** — notifications toast
-- **Zod + React Hook Form** — validation formulaires
+---
 
-## Démarrage rapide
+## ✨ Points Forts (Features)
 
-```bash
-# 1. Cloner et installer
-git clone https://github.com/VOTRE-REPO/reunions-gt-v2
-cd reunions-gt-v2
-npm install
+### 🏢 Architecture Multi-Tenant & Sécurité
+- **Isolation Totale** : Utilisation de **Row Level Security (RLS)** sur Supabase. Chaque organisation vit dans un silo étanche.
+- **Administration SaaS** : Un panneau de contrôle pour gérer les membres et le code d'invitation unique.
+- **Gestion des Modules (Feature Toggling)** : Activez ou désactivez les fonctionnalités (Parc Auto, Congés, etc.) à la volée pour personnaliser l'expérience client.
 
-# 2. Configurer l'environnement
-cp .env.example .env
-# Remplir avec vos clés Supabase (mêmes que v1 !)
+### 🎨 Design & Expérience Utilisateur
+- **Dark & Light Mode** : Support natif avec transition fluide via des variables CSS modernes.
+- **Responsive "Mobile-First"** : Une interface pensée pour le terrain, compatible smartphones et tablettes.
+- **Micro-interactions** : Animations subtiles pour une sensation de produit Premium.
 
-# 3. Lancer en dev
-npm run dev
-# → http://localhost:8080
-```
+### 🛠 Modules Métiers
+- **📅 Gestion de Réunions** : Planification et suivi des comptes-rendus.
+- **✅ Kanban & Actions** : Suivi des tâches en temps réel avec indicateurs de retard.
+- **🚗 Parc Automobile** : Gestion des véhicules et alertes sur les inspections.
+- **📦 Consommables** : Gestion de stock et demandes en attente.
+- **🏖️ Gestion des Congés** : Validation et suivi du planning d'absence.
+- **❤️ Baromètre d'Humeur** : Suivi du bien-être de l'équipe.
 
-## Déploiement Vercel
+---
 
-```bash
-# Depuis le dashboard Vercel :
-# 1. New Project → importer ce repo
-# 2. Framework : Vite
-# 3. Environment Variables : VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY
-# 4. Deploy
-```
+## 📸 Aperçus
 
-## Architecture
+| Login (Dark) | Dashboard (Mobile) |
+| :---: | :---: |
+| ![Login Page](https://github.com/user-attachments/assets/login_placeholder) | ![Mobile Sidebar](https://github.com/user-attachments/assets/mobile_placeholder) |
 
-```
-src/
-├── features/          # Un dossier = un module autonome
-│   ├── auth/          # Login, guard, hook session
-│   ├── dashboard/     # KPIs, graphiques, alertes
-│   ├── meetings/      # Réunions + comptes-rendus
-│   ├── actions/       # Points d'action CRUD
-│   ├── colleagues/    # Gestion équipe
-│   ├── vehicles/      # Parc auto + inspections
-│   ├── notes/         # Notes de préparation
-│   ├── consumables/   # Demandes consommables
-│   ├── mood/          # Baromètre d'humeur
-│   └── schedule/      # Planning hebdo
-├── components/
-│   ├── ShellLayout.tsx  # Sidebar + navigation
-│   └── ui/              # Composants partagés
-├── lib/               # supabase.ts, queryClient.ts
-├── types/             # database.ts, app.ts
-├── utils/             # Fonctions utilitaires
-└── constants/         # Routes, query keys, labels
-```
+---
 
-## Règle d'or
+## 🛠 Stack Technique
 
-**Supabase = données (ne bougent jamais)**
-**GitHub = interface (remplaçable sans toucher aux données)**
+- **Frontend** : [React.js](https://reactjs.org/) + [Vite](https://vitejs.dev/)
+- **Langage** : [TypeScript](https://www.typescriptlang.org/) (Typage strict pour une robustesse maximale)
+- **Backend/DB** : [Supabase](https://supabase.com/) (PostgreSQL + Auth + RLS)
+- **State Management** : [TanStack Query v5](https://tanstack.com/query/latest)
+- **Styling** : Modern Vanilla CSS (Variables dynamiques, Flexbox/Grid)
+- **Icons** : [Lucide React](https://lucide.dev/)
+- **UI Feedback** : [Sonner](https://sonner.stevenly.me/) (Toasts)
 
-Modifier une feature = toucher uniquement son dossier `features/xxx/`.
-Ajouter une feature = créer `features/nouveau/`, brancher dans `App.tsx`. C'est tout.
+---
+
+## 🚀 Installation Locale
+
+1. **Cloner le dépôt**
+   ```bash
+   git clone https://github.com/votre-user/reunion-v3.git
+   cd reunion-gt-v3
+   ```
+
+2. **Installer les dépendances**
+   ```bash
+   npm install
+   ```
+
+3. **Configurer les variables d'environnement**
+   Créez un fichier `.env` à la racine :
+   ```env
+   VITE_SUPABASE_URL=votre_url_supabase
+   VITE_SUPABASE_ANON_KEY=votre_cle_anon
+   ```
+
+4. **Lancer le serveur de développement**
+   ```bash
+   npm run dev
+   ```
+
+---
+
+## ☁️ Déploiement
+
+Le projet est optimisé pour un déploiement sur **Vercel** ou **Netlify**.
+
+> [!IMPORTANT]
+> N'oubliez pas d'ajouter les variables d'environnement `VITE_SUPABASE_URL` et `VITE_SUPABASE_ANON_KEY` dans les réglages de votre plateforme de déploiement.
+
+---
+
+## 📄 Licence
+
+Distribué sous la licence MIT. Voir `LICENSE` pour plus d'informations.
+
+---
+
+<p align="center">Développé avec ❤️ pour rendre la logistique plus intelligente.</p>

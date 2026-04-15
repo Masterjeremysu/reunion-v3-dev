@@ -3,14 +3,18 @@ import { supabase } from '../../lib/supabase'
 import { QK } from '../../constants'
 import type { ActionItemInsert, ActionItemUpdate } from '../../types/app'
 import { toast } from 'sonner'
+import { useAuth } from '../auth/useAuth'
 
 export function useActions(meetingId?: string) {
+  const { organization } = useAuth()
   return useQuery({
-    queryKey: meetingId ? QK.MEETING_ACTIONS(meetingId) : QK.ACTIONS,
+    queryKey: meetingId ? [QK.MEETING_ACTIONS(meetingId), organization?.id] : [QK.ACTIONS, organization?.id],
+    enabled: !!organization?.id,
     queryFn: async () => {
       let q = supabase
         .from('action_items')
         .select('*, colleagues(id, name, post)')
+        .eq('organization_id', organization!.id)
         .order('due_date', { ascending: true })
       if (meetingId) q = q.eq('meeting_id', meetingId)
       const { data, error } = await q
@@ -22,9 +26,11 @@ export function useActions(meetingId?: string) {
 
 export function useCreateAction() {
   const qc = useQueryClient()
+  const { organization } = useAuth()
   return useMutation({
     mutationFn: async (payload: ActionItemInsert) => {
-      const { data, error } = await supabase.from('action_items').insert(payload).select().single()
+      if (!organization?.id) throw new Error("Organisation introuvable")
+      const { data, error } = await supabase.from('action_items').insert({ ...payload, organization_id: organization.id }).select().single()
       if (error) throw error
       return data
     },

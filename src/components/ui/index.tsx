@@ -30,8 +30,8 @@ export function Card({ children, className, onClick }: {
     <div
       onClick={onClick}
       className={cn(
-        'bg-[#181c27] border border-white/[0.07] rounded-xl',
-        onClick && 'cursor-pointer hover:border-white/[0.15] transition-colors',
+        'bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded-xl',
+        onClick && 'cursor-pointer hover:border-[var(--color-border2)] transition-colors',
         className
       )}
     >
@@ -50,9 +50,9 @@ export function PageHeader({ title, subtitle, actions }: {
   title: string; subtitle?: string; actions?: React.ReactNode
 }) {
   return (
-    <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] bg-[#181c27]">
+    <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-border)] bg-[var(--color-bg-sidebar)]">
       <div>
-        <h1 className="text-base font-medium text-white">{title}</h1>
+        <h1 className="text-base font-medium text-[var(--color-text-main)]">{title}</h1>
         {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
       </div>
       {actions && <div className="flex items-center gap-2">{actions}</div>}
@@ -66,7 +66,7 @@ export function EmptyState({ icon: Icon, title, description, action }: {
 }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
-      <div className="w-12 h-12 rounded-xl bg-[#1e2333] flex items-center justify-center">
+      <div className="w-12 h-12 rounded-xl bg-[var(--color-bg-input)] flex items-center justify-center">
         <Icon className="w-6 h-6 text-slate-500" />
       </div>
       <div>
@@ -100,7 +100,7 @@ export function Avatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md'
 // ── Button ────────────────────────────────────────────────────────────────────
 type BtnVariant = 'default' | 'primary' | 'ghost' | 'danger'
 const BTN_STYLES: Record<BtnVariant, string> = {
-  default: 'bg-transparent border border-white/[0.15] text-slate-300 hover:bg-[#1e2333] hover:text-white',
+  default: 'bg-transparent border border-[var(--color-border2)] text-[var(--color-text-muted)] hover:bg-[var(--color-bg-input)] hover:text-[var(--color-text-main)]',
   primary: 'bg-teal-600 border border-teal-600 text-white hover:bg-teal-700',
   ghost:   'bg-transparent border-transparent text-slate-400 hover:text-slate-200 hover:bg-white/5',
   danger:  'bg-transparent border border-red-500/30 text-red-400 hover:bg-red-500/10',
@@ -124,7 +124,7 @@ export function Button({ variant = 'default', size = 'md', children, className, 
 }
 
 // ── Input ─────────────────────────────────────────────────────────────────────
-export const inputClass = 'w-full bg-[#1e2333] border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-600 outline-none focus:border-teal-500 transition-colors'
+export const inputClass = 'w-full bg-[var(--color-bg-input)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-main)] placeholder:text-[var(--color-text-faded)] outline-none focus:border-teal-500 transition-colors'
 
 export function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
   return <input className={cn(inputClass, className)} {...props} />
@@ -141,5 +141,5 @@ export function SectionLabel({ children }: { children: React.ReactNode }) {
 
 // ── Divider ───────────────────────────────────────────────────────────────────
 export function Divider() {
-  return <div className="h-px bg-white/[0.06] my-4" />
+  return <div className="h-px bg-[var(--color-border)] my-4" />
 }

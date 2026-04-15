@@ -105,7 +105,7 @@ function printHTMLFallback(data: any, colmap: Record<string, any>, crItems: any[
     const cname = colmap[a.assigned_to_colleague_id]?.name || '—'
     const due   = a.due_date ? a.due_date.slice(0, 10) : '—'
     return `
-      <tr style="border-bottom:1px solid #131720">
+      <tr style="border-bottom:1px solid var(--color-border)">
         <td style="padding:7px 8px;font-size:11px;color:#e8eaf0">• ${a.description}</td>
         <td style="padding:7px 8px;font-size:11px;color:#8b90a4">${cname}</td>
         <td style="padding:7px 8px;font-size:11px;color:#8b90a4">${due}</td>

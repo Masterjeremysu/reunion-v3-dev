@@ -8,12 +8,15 @@ import { format, addWeeks, subWeeks, startOfWeek, endOfWeek } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { useAuth } from '../auth/useAuth'
 
 function useSchedules() {
+  const { organization } = useAuth()
   return useQuery({
-    queryKey: QK.SCHEDULE,
+    queryKey: [QK.SCHEDULE, organization?.id],
+    enabled: !!organization?.id,
     queryFn: async () => {
-      const { data, error } = await supabase.from('weekly_schedules').select('*, colleagues(id, name, post)').order('week_start_date', { ascending: false })
+      const { data, error } = await supabase.from('weekly_schedules').select('*, colleagues(id, name, post)').eq('organization_id', organization!.id).order('week_start_date', { ascending: false })
       if (error) throw error
       return data
     },
@@ -24,6 +27,7 @@ export function SchedulePage() {
   const { data: schedules, isLoading } = useSchedules()
   const { data: colleagues } = useColleagues()
   const qc = useQueryClient()
+  const { organization } = useAuth()
   const [currentWeek, setCurrentWeek] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }))
   const [selectedColleague, setSelectedColleague] = useState('')
   const [notes, setNotes] = useState('')
@@ -33,12 +37,14 @@ export function SchedulePage() {
 
   const upsert = useMutation({
     mutationFn: async () => {
+      if (!organization?.id) throw new Error("Organisation introuvable")
       const { data: { user } } = await supabase.auth.getUser()
       const payload = {
         week_start_date: weekStart,
         in_charge_colleague_id: selectedColleague || null,
         notes: notes || null,
         user_id: user?.id ?? null,
+        organization_id: organization.id
       }
       if (existingSchedule) {
         const { error } = await supabase.from('weekly_schedules').update(payload).eq('id', existingSchedule.id)
@@ -81,7 +87,7 @@ export function SchedulePage() {
           <select
             value={selectedColleague || existingSchedule?.in_charge_colleague_id || ''}
             onChange={e => setSelectedColleague(e.target.value)}
-            className="w-full bg-[#1e2333] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white outline-none focus:border-teal-500 mb-3"
+            className="w-full bg-[var(--color-bg-input)] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white outline-none focus:border-teal-500 mb-3"
           >
             <option value="">— Non défini —</option>
             {colleagues?.map(c => <option key={c.id} value={c.id}>{c.name} · {c.post}</option>)}
@@ -91,7 +97,7 @@ export function SchedulePage() {
             onChange={e => setNotes(e.target.value)}
             placeholder="Notes pour cette semaine..."
             rows={3}
-            className="w-full bg-[#1e2333] border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-600 outline-none focus:border-teal-500 resize-none mb-3"
+            className="w-full bg-[var(--color-bg-input)] border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-600 outline-none focus:border-teal-500 resize-none mb-3"
           />
           <Button variant="primary" onClick={() => upsert.mutate()} className="w-full justify-center">
             {existingSchedule ? 'Mettre à jour' : 'Enregistrer'}
@@ -107,7 +113,7 @@ export function SchedulePage() {
               <div className="divide-y divide-white/[0.05]">
                 {schedules?.map((s: any) => (
                   <div key={s.id} className="flex items-center gap-3 p-3.5">
-                    <div className="w-10 h-10 bg-[#1e2333] rounded-lg flex flex-col items-center justify-center flex-shrink-0 border border-white/[0.07]">
+                    <div className="w-10 h-10 bg-[var(--color-bg-input)] rounded-lg flex flex-col items-center justify-center flex-shrink-0 border border-white/[0.07]">
                       <span className="text-[10px] text-slate-400 uppercase">{format(new Date(s.week_start_date), 'S', { locale: fr })}{format(new Date(s.week_start_date), 'ww')}</span>
                     </div>
                     <div className="flex-1 min-w-0">

@@ -12,7 +12,10 @@ import { useActions } from '../actions/useActions'
 import { useColleagues } from '../colleagues/useColleagues'
 import { useAllInspections, useVehicles } from '../vehicles/useVehicles'
 import { useConsumables, useMood } from '../consumables/useConsumables'
+import { useAuth } from '../auth/useAuth'
 import { Spinner } from '../../components/ui'
+import { supabase } from '../../lib/supabase'
+import { useQuery } from '@tanstack/react-query'
 import { fDate, isOverdue } from '../../utils'
 import { useNavigate } from 'react-router-dom'
 import { ROUTES } from '../../constants'
@@ -33,8 +36,6 @@ import {
   isWithinInterval, parseISO
 } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { useQuery } from '@tanstack/react-query'
-import { supabase } from '../../lib/supabase'
 
 const ResponsiveGridLayout = WidthProvider(Responsive)
 
@@ -101,8 +102,8 @@ function isDueSoon(d: string, days = 45) {
 
 const LEAVE_COLORS: Record<string, string> = {
   conges_payes: '#1D9E75', rtt: '#378ADD', maladie: '#EF9F27',
-  arret_travail: '#E24B4A', conge_sans_solde: '#8b90a4',
-  evenement_familial: '#D4537E', formation: '#7F77DD', autre: '#565c75',
+  arret_travail: '#E24B4A', conge_sans_solde: 'var(--color-text-muted)',
+  evenement_familial: '#D4537E', formation: '#7F77DD', autre: 'var(--color-text-faded)',
 }
 const LEAVE_LABELS: Record<string, string> = {
   conges_payes: 'CP', rtt: 'RTT', maladie: 'Maladie', arret_travail: 'Arrêt',
@@ -134,8 +135,8 @@ function useUpcomingLeaves() {
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null
   return (
-    <div style={{ background: '#161b26', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '10px 14px' }}>
-      <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', margin: '0 0 6px', fontFamily: 'monospace' }}>{label}</p>
+    <div style={{ background: 'var(--color-bg-sidebar)', border: '1px solid var(--color-border2)', borderRadius: 10, padding: '10px 14px' }}>
+      <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '0 0 6px', fontFamily: 'monospace' }}>{label}</p>
       {payload.map((p: any) => (
         <p key={p.name} style={{ fontSize: 13, fontWeight: 600, color: p.color, margin: '2px 0', fontFamily: 'monospace' }}>
           {p.value} {p.name}
@@ -156,31 +157,31 @@ function KpiCard({ label, value, delta, deltaLabel, color, icon: Icon, onClick, 
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        background: critical ? `${color}08` : hovered ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.02)',
-        border: `1px solid ${critical ? `${color}30` : hovered ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.06)'}`,
+        background: critical ? `${color}08` : hovered ? 'var(--color-border)' : 'var(--color-border)',
+        border: `1px solid ${critical ? `${color}30` : hovered ? 'var(--color-border2)' : 'var(--color-border)'}`,
         borderRadius: 14, padding: '18px 20px', cursor: onClick ? 'pointer' : 'default',
         transition: 'all 0.2s', position: 'relative', overflow: 'hidden',
       }}>
       {critical && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: color, opacity: 0.8 }} />}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
-        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{label}</p>
+        <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{label}</p>
         <div style={{ width: 32, height: 32, borderRadius: 9, background: `${color}15`, border: `1px solid ${color}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <Icon style={{ width: 14, height: 14, color }} />
         </div>
       </div>
-      <p style={{ fontSize: 32, fontWeight: 800, color: '#fff', margin: 0, letterSpacing: '-0.04em', fontFamily: 'monospace', lineHeight: 1 }}>{value}</p>
+      <p style={{ fontSize: 32, fontWeight: 800, color: 'var(--color-text-main)', margin: 0, letterSpacing: '-0.04em', fontFamily: 'monospace', lineHeight: 1 }}>{value}</p>
       {delta !== undefined && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 8 }}>
           {delta > 0 ? <ArrowUpRight style={{ width: 12, height: 12, color: '#1D9E75' }} /> :
            delta < 0 ? <ArrowDownRight style={{ width: 12, height: 12, color: '#E24B4A' }} /> : null}
-          <span style={{ fontSize: 11, color: delta > 0 ? '#1D9E75' : delta < 0 ? '#E24B4A' : '#565c75', fontFamily: 'monospace' }}>
+          <span style={{ fontSize: 11, color: delta > 0 ? '#1D9E75' : delta < 0 ? '#E24B4A' : 'var(--color-text-faded)', fontFamily: 'monospace' }}>
             {delta > 0 ? `+${delta}` : delta} {deltaLabel}
           </span>
         </div>
       )}
       {onClick && (
         <div style={{ position: 'absolute', bottom: 14, right: 16, opacity: hovered ? 0.6 : 0, transition: 'opacity 0.2s' }}>
-          <ChevronRight style={{ width: 14, height: 14, color: '#fff' }} />
+          <ChevronRight style={{ width: 14, height: 14, color: 'var(--color-text-main)' }} />
         </div>
       )}
     </div>
@@ -209,8 +210,8 @@ function AlertItem({ level, title, sub, action, onClick }: {
         <Icon style={{ width: 13, height: 13, color: conf.color }} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: 12, fontWeight: 600, color: '#e8eaf0', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</p>
-        <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', margin: '1px 0 0', fontFamily: 'monospace' }}>{sub}</p>
+        <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-main)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</p>
+        <p style={{ fontSize: 10, color: 'var(--color-text-muted)', margin: '1px 0 0', fontFamily: 'monospace' }}>{sub}</p>
       </div>
       {action && <span style={{ fontSize: 10, color: conf.color, fontFamily: 'monospace', flexShrink: 0 }}>{action} →</span>}
     </div>
@@ -221,7 +222,7 @@ function AlertItem({ level, title, sub, action, onClick }: {
 function SectionTitle({ children, action, onAction }: { children: string; action?: string; onAction?: () => void }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-      <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', fontFamily: 'monospace', margin: 0 }}>{children}</p>
+      <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-text-faded)', fontFamily: 'monospace', margin: 0 }}>{children}</p>
       {action && <button onClick={onAction} style={{ fontSize: 11, color: '#1D9E75', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'monospace' }}>{action} →</button>}
     </div>
   )
@@ -230,20 +231,20 @@ function SectionTitle({ children, action, onAction }: { children: string; action
 // ─── Leave row ────────────────────────────────────────────────────────────────
 function LeaveRow({ leave, dimmed }: { leave: any; dimmed?: boolean }) {
   const c = leave.colleagues
-  const color = LEAVE_COLORS[leave.leave_type] ?? '#8b90a4'
+  const color = LEAVE_COLORS[leave.leave_type] ?? 'var(--color-text-muted)'
   const label = LEAVE_LABELS[leave.leave_type] ?? leave.leave_type
   const initials = c?.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
   const dateLabel = leave.start_date === leave.end_date
     ? fDate(leave.start_date)
     : `${fDate(leave.start_date)} → ${fDate(leave.end_date)}`
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.04)', opacity: dimmed ? 0.55 : 1 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: '1px solid var(--color-border)', opacity: dimmed ? 0.55 : 1 }}>
       <div style={{ width: 26, height: 26, borderRadius: 7, flexShrink: 0, background: `${color}20`, border: `1px solid ${color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color }}>
         {initials}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: 12, fontWeight: 600, color: dimmed ? 'rgba(255,255,255,0.45)' : '#e8eaf0', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c?.name}</p>
-        <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', margin: '1px 0 0', fontFamily: 'monospace' }}>
+        <p style={{ fontSize: 12, fontWeight: 600, color: dimmed ? 'var(--color-text-muted)' : 'var(--color-text-main)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c?.name}</p>
+        <p style={{ fontSize: 10, color: 'var(--color-text-faded)', margin: '1px 0 0', fontFamily: 'monospace' }}>
           {dateLabel}{leave.is_half_day && ` · ${leave.half_day_period === 'morning' ? 'Matin' : 'Après-midi'}`}
         </p>
       </div>
@@ -294,13 +295,13 @@ function LeavesWidget({ onNavigate }: { onNavigate: () => void }) {
         )}
         {thisWeek.length > 0 && (
           <div style={{ marginBottom: 10 }}>
-            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 6px' }}>Cette semaine</p>
+            <p style={{ fontSize: 10, color: 'var(--color-text-faded)', fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 6px' }}>Cette semaine</p>
             {thisWeek.map(l => <LeaveRow key={l.id} leave={l} />)}
           </div>
         )}
         {nextWeek.length > 0 && (
           <div>
-            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 6px' }}>Semaine prochaine</p>
+            <p style={{ fontSize: 10, color: 'var(--color-text-faded)', fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 6px' }}>Semaine prochaine</p>
             {nextWeek.map(l => <LeaveRow key={l.id} leave={l} dimmed />)}
           </div>
         )}
@@ -320,8 +321,8 @@ function Widget({ children, editMode, borderColor }: {
 }) {
   return (
     <div style={{
-      background: 'rgba(255,255,255,0.02)',
-      border: `1px solid ${borderColor ?? 'rgba(255,255,255,0.06)'}`,
+      background: 'var(--color-bg-card)',
+      border: `1px solid ${borderColor ?? 'var(--color-border)'}`,
       borderRadius: 14,
       padding: '18px 20px',
       height: '100%',
@@ -349,7 +350,7 @@ function Widget({ children, editMode, borderColor }: {
             borderRadius: 5,
             zIndex: 10,
           }}>
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="rgba(255,255,255,0.8)">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="var(--color-text-main)">
             <circle cx="2" cy="2" r="1.2"/><circle cx="8" cy="2" r="1.2"/>
             <circle cx="2" cy="5" r="1.2"/><circle cx="8" cy="5" r="1.2"/>
             <circle cx="2" cy="8" r="1.2"/><circle cx="8" cy="8" r="1.2"/>
@@ -369,9 +370,22 @@ export function DashboardPage() {
   const { data: colleagues } = useColleagues()
   const { data: allInspections } = useAllInspections()
   const { data: vehicles } = useVehicles()
-  const { data: consumables } = useConsumables()
-  const { data: moods } = useMood()
-  const { data: leaves } = useUpcomingLeaves()
+  const { data: consumables } = useConsumables() as any
+  const { data: moods } = useMood() as any
+  const { data: leavesOverview } = useQuery({
+    queryKey: ['upcoming_leaves_dashboard'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('leave_requests')
+        .select('*, colleagues(id, name)')
+        .eq('status', 'approved')
+        .gte('end_date', format(new Date(), 'yyyy-MM-dd'))
+        .order('start_date', { ascending: true })
+      if (error) throw error
+      return data || []
+    }
+  })
+  const leaves = leavesOverview as any[] | undefined
 
   const [editMode, setEditMode] = useState(false)
   const [layouts, setLayouts] = useState<any>(loadLayout)
@@ -474,19 +488,24 @@ export function DashboardPage() {
   , [actions])
 
   const MOOD_EMOJI = ['', '😔', '😕', '😐', '🙂', '😄']
-  const MOOD_COLOR = ['', '#E24B4A', '#EF9F27', '#8b90a4', '#378ADD', '#1D9E75']
+  const MOOD_COLOR = ['', '#E24B4A', '#EF9F27', 'var(--color-text-muted)', '#378ADD', '#1D9E75']
 
   const now = new Date()
+  const { user } = useAuth()
+  const firstName = user?.email 
+    ? user.email.split('@')[0].split('.')[0].charAt(0).toUpperCase() + user.email.split('@')[0].split('.')[0].slice(1)
+    : ''
+
   const greeting = now.getHours() < 12 ? 'Bonjour' : now.getHours() < 18 ? 'Bon après-midi' : 'Bonsoir'
 
   if (loading) return (
-    <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0a0c12' }}>
+    <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-bg-app)' }}>
       <Spinner />
     </div>
   )
 
   return (
-    <div style={{ background: '#0a0c12', minHeight: '100vh', overflowY: 'auto' }}>
+    <div style={{ background: 'var(--color-bg-app)', minHeight: '100vh', overflowY: 'auto' }}>
       <style>{`
         @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.85)}}
         .react-grid-item.react-grid-placeholder { background: rgba(55,138,221,0.12) !important; border: 1px dashed rgba(55,138,221,0.4) !important; border-radius: 14px !important; }
@@ -498,14 +517,14 @@ export function DashboardPage() {
       `}</style>
 
       {/* ── Header ── */}
-      <div style={{ padding: '24px 28px 20px', background: 'linear-gradient(180deg, rgba(29,158,117,0.06) 0%, transparent 100%)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+      <div style={{ padding: '24px 28px 20px', background: 'linear-gradient(180deg, rgba(29,158,117,0.06) 0%, transparent 100%)', borderBottom: '1px solid var(--color-border)' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
           <div>
             <p style={{ fontSize: 11, color: '#1D9E75', fontFamily: 'monospace', letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 4px' }}>
               {format(now, "EEEE d MMMM yyyy", { locale: fr })}
             </p>
-            <h1 style={{ fontSize: 26, fontWeight: 800, color: '#fff', margin: 0, letterSpacing: '-0.04em' }}>{greeting} 👋</h1>
-            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', margin: '6px 0 0' }}>
+            <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--color-text-main)', margin: 0, letterSpacing: '-0.04em' }}>{greeting} {firstName} 👋</h1>
+            <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '6px 0 0' }}>
               {stats.lateActions > 0
                 ? `⚠️ ${stats.lateActions} action${stats.lateActions > 1 ? 's' : ''} en retard · intervention requise`
                 : stats.todayAbsent > 0
@@ -521,7 +540,7 @@ export function DashboardPage() {
               <button
                 onClick={handleResetLayout}
                 title="Réinitialiser la disposition"
-                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--color-bg-input)', border: '1px solid var(--color-border2)', borderRadius: 10, color: 'var(--color-text-muted)', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>
                 <RotateCcw style={{ width: 13, height: 13 }} /> Réinitialiser
               </button>
             )}
@@ -529,9 +548,9 @@ export function DashboardPage() {
               onClick={() => setEditMode(v => !v)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
-                background: editMode ? 'rgba(55,138,221,0.15)' : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${editMode ? 'rgba(55,138,221,0.4)' : 'rgba(255,255,255,0.08)'}`,
-                borderRadius: 10, color: editMode ? '#378ADD' : 'rgba(255,255,255,0.4)',
+                background: editMode ? 'rgba(55,138,221,0.15)' : 'var(--color-border)',
+                border: `1px solid ${editMode ? 'rgba(55,138,221,0.4)' : 'var(--color-border)'}`,
+                borderRadius: 10, color: editMode ? '#378ADD' : 'var(--color-text-muted)',
                 fontSize: 12, fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s',
               }}>
               {editMode
@@ -540,7 +559,7 @@ export function DashboardPage() {
               }
             </button>
             <button onClick={() => navigate(ROUTES.MEETINGS)}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#1D9E75', border: 'none', borderRadius: 10, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#1D9E75', border: 'none', borderRadius: 10, color: 'var(--color-text-main)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
               <CalendarDays style={{ width: 14, height: 14 }} /> Nouvelle réunion
             </button>
           </div>
@@ -599,8 +618,8 @@ export function DashboardPage() {
                         <stop offset="95%" stopColor="#378ADD" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <XAxis dataKey="week" tick={{ fill: '#565c75', fontSize: 10, fontFamily: 'monospace' }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: '#565c75', fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <XAxis dataKey="week" tick={{ fill: 'var(--color-text-faded)', fontSize: 10, fontFamily: 'monospace' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: 'var(--color-text-faded)', fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
                     <Tooltip content={<CustomTooltip />} />
                     <Area type="monotone" dataKey="réunions" stroke="#1D9E75" strokeWidth={2} fill="url(#gM)" dot={false} />
                     <Area type="monotone" dataKey="actions" stroke="#378ADD" strokeWidth={1.5} fill="url(#gA)" dot={false} strokeDasharray="4 2" />
@@ -609,7 +628,7 @@ export function DashboardPage() {
               </div>
               <div style={{ display: 'flex', gap: 16, marginTop: 8, flexShrink: 0 }}>
                 {[['#1D9E75', 'Réunions'], ['#378ADD', 'Actions']].map(([c, l]) => (
-                  <span key={l} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace' }}>
+                  <span key={l} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>
                     <span style={{ width: 16, height: 2, background: c, borderRadius: 1, display: 'inline-block' }} />{l}
                   </span>
                 ))}
@@ -636,8 +655,8 @@ export function DashboardPage() {
                         <span style={{ fontSize: 11, color: s.color, fontFamily: 'monospace', fontWeight: 600 }}>{s.label}</span>
                         <span style={{ fontSize: 10, color: `${s.color}80`, fontFamily: 'monospace' }}>{pct}%</span>
                       </div>
-                      <span style={{ fontSize: 26, fontWeight: 800, color: '#fff', fontFamily: 'monospace' }}>{s.value}</span>
-                      <div style={{ marginTop: 6, height: 3, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
+                      <span style={{ fontSize: 26, fontWeight: 800, color: 'var(--color-text-main)', fontFamily: 'monospace' }}>{s.value}</span>
+                      <div style={{ marginTop: 6, height: 3, background: 'var(--color-bg-input)', borderRadius: 2, overflow: 'hidden' }}>
                         <div style={{ height: '100%', width: `${pct}%`, background: s.color, borderRadius: 2, transition: 'width 0.8s ease' }} />
                       </div>
                     </div>
@@ -653,12 +672,12 @@ export function DashboardPage() {
               <SectionTitle action="Voir équipe" onAction={() => navigate(ROUTES.COLLEAGUES)}>Performance équipe</SectionTitle>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', flex: 1 }}>
                 {colleaguePerf.length === 0
-                  ? <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace' }}>Aucune donnée</p>
+                  ? <p style={{ fontSize: 12, color: 'var(--color-text-faded)', fontFamily: 'monospace' }}>Aucune donnée</p>
                   : colleaguePerf.map((c, i) => (
                     <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', fontFamily: 'monospace', width: 14, textAlign: 'right', flexShrink: 0 }}>{i + 1}</span>
-                      <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', width: 72, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
-                      <div style={{ flex: 1, height: 6, background: 'rgba(255,255,255,0.05)', borderRadius: 3, overflow: 'hidden' }}>
+                      <span style={{ fontSize: 10, color: 'var(--color-text-faded)', fontFamily: 'monospace', width: 14, textAlign: 'right', flexShrink: 0 }}>{i + 1}</span>
+                      <span style={{ fontSize: 12, color: 'var(--color-text-main)', width: 72, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
+                      <div style={{ flex: 1, height: 6, background: 'var(--color-bg-input)', borderRadius: 3, overflow: 'hidden' }}>
                         <div style={{ height: '100%', width: `${c.rate}%`, background: c.rate >= 80 ? '#1D9E75' : c.rate >= 50 ? '#EF9F27' : '#E24B4A', borderRadius: 3, transition: 'width 0.6s ease' }} />
                       </div>
                       <span style={{ fontSize: 11, fontWeight: 700, color: c.rate >= 80 ? '#1D9E75' : c.rate >= 50 ? '#EF9F27' : '#E24B4A', fontFamily: 'monospace', width: 36, textAlign: 'right', flexShrink: 0 }}>{c.rate}%</span>
@@ -673,7 +692,7 @@ export function DashboardPage() {
           <div key="mood">
             <Widget editMode={editMode}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexShrink: 0 }}>
-                <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', fontFamily: 'monospace', margin: 0 }}>Baromètre humeur</p>
+                <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-text-faded)', fontFamily: 'monospace', margin: 0 }}>Baromètre humeur</p>
                 {stats.avgMood && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ fontSize: 18 }}>{MOOD_EMOJI[Math.round(stats.avgMood)]}</span>
@@ -690,8 +709,8 @@ export function DashboardPage() {
                         <stop offset="95%" stopColor="#7F77DD" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <XAxis dataKey="date" tick={{ fill: '#565c75', fontSize: 9, fontFamily: 'monospace' }} axisLine={false} tickLine={false} />
-                    <YAxis domain={[1, 5]} ticks={[1, 3, 5]} tick={{ fill: '#565c75', fontSize: 9 }} axisLine={false} tickLine={false} />
+                    <XAxis dataKey="date" tick={{ fill: 'var(--color-text-faded)', fontSize: 9, fontFamily: 'monospace' }} axisLine={false} tickLine={false} />
+                    <YAxis domain={[1, 5]} ticks={[1, 3, 5]} tick={{ fill: 'var(--color-text-faded)', fontSize: 9 }} axisLine={false} tickLine={false} />
                     <Tooltip content={<CustomTooltip />} />
                     <Area type="monotone" dataKey="score" stroke="#7F77DD" strokeWidth={2} fill="url(#gMood)" dot={{ fill: '#7F77DD', r: 2, strokeWidth: 0 }} />
                   </AreaChart>
@@ -706,20 +725,20 @@ export function DashboardPage() {
               <SectionTitle action="Toutes" onAction={() => navigate(ROUTES.MEETINGS)}>Prochaines réunions</SectionTitle>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, overflowY: 'auto', flex: 1 }}>
                 {upcomingMeetings.length === 0
-                  ? <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace' }}>Aucune réunion planifiée</p>
+                  ? <p style={{ fontSize: 12, color: 'var(--color-text-faded)', fontFamily: 'monospace' }}>Aucune réunion planifiée</p>
                   : upcomingMeetings.map(m => {
                     const d = new Date(m.date)
                     const daysLeft = differenceInDays(d, new Date())
                     return (
-                      <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 10, cursor: 'pointer' }}
+                      <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: 'var(--color-bg-card)', border: '1px solid var(--color-border)', borderRadius: 10, cursor: 'pointer' }}
                         onClick={() => navigate(ROUTES.MEETINGS)}>
                         <div style={{ width: 36, height: 36, borderRadius: 8, background: '#1D9E7512', border: '1px solid #1D9E7525', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           <span style={{ fontSize: 14, fontWeight: 800, color: '#5DCAA5', lineHeight: 1 }}>{format(d, 'd')}</span>
                           <span style={{ fontSize: 8, color: '#1D9E75', textTransform: 'uppercase' }}>{format(d, 'MMM', { locale: fr })}</span>
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.8)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.title}</p>
-                          <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', margin: '2px 0 0', fontFamily: 'monospace' }}>
+                          <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-main)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.title}</p>
+                          <p style={{ fontSize: 10, color: 'var(--color-text-faded)', margin: '2px 0 0', fontFamily: 'monospace' }}>
                             {daysLeft === 0 ? "Aujourd'hui" : daysLeft === 1 ? 'Demain' : `Dans ${daysLeft} jours`}
                             {format(d, 'HH:mm') !== '00:00' && ` · ${format(d, 'HH:mm')}`}
                           </p>
@@ -761,17 +780,17 @@ export function DashboardPage() {
               <SectionTitle action="Voir tout" onAction={() => navigate(ROUTES.ACTIONS)}>Actions urgentes</SectionTitle>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5, overflowY: 'auto', flex: 1 }}>
                 {urgentActions.length === 0
-                  ? <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace' }}>Aucune action urgente</p>
+                  ? <p style={{ fontSize: 12, color: 'var(--color-text-faded)', fontFamily: 'monospace' }}>Aucune action urgente</p>
                   : urgentActions.map(a => {
                     const late = a.due_date && isOverdue(a.due_date)
                     const c = colleagues?.find(col => col.id === a.assigned_to_colleague_id)
                     return (
-                      <div key={a.id} style={{ display: 'flex', gap: 8, padding: '8px 10px', background: late ? '#E24B4A06' : 'rgba(255,255,255,0.02)', border: `1px solid ${late ? '#E24B4A20' : 'rgba(255,255,255,0.05)'}`, borderRadius: 8, cursor: 'pointer' }}
+                      <div key={a.id} style={{ display: 'flex', gap: 8, padding: '8px 10px', background: late ? '#E24B4A06' : 'var(--color-border)', border: `1px solid ${late ? '#E24B4A20' : 'var(--color-border)'}`, borderRadius: 8, cursor: 'pointer' }}
                         onClick={() => navigate(ROUTES.ACTIONS)}>
                         <div style={{ width: 5, height: 5, borderRadius: '50%', background: late ? '#E24B4A' : '#EF9F27', flexShrink: 0, marginTop: 5 }} />
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.description}</p>
-                          <p style={{ fontSize: 10, color: late ? '#F09595' : 'rgba(255,255,255,0.3)', margin: '1px 0 0', fontFamily: 'monospace' }}>
+                          <p style={{ fontSize: 12, color: 'var(--color-text-main)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.description}</p>
+                          <p style={{ fontSize: 10, color: late ? '#F09595' : 'var(--color-text-faded)', margin: '1px 0 0', fontFamily: 'monospace' }}>
                             {c?.name}{c && a.due_date && ' · '}{a.due_date && fDate(a.due_date)}{late && ' · En retard'}
                           </p>
                         </div>
@@ -795,7 +814,7 @@ export function DashboardPage() {
                   return (
                     <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
                       <div style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0 }} />
-                      <span style={{ flex: 1, fontSize: 12, color: 'rgba(255,255,255,0.6)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</span>
+                      <span style={{ flex: 1, fontSize: 12, color: 'var(--color-text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</span>
                       <span style={{ fontSize: 9, color: color, fontFamily: 'monospace' }}>
                         {expired > 0 ? `${expired} exp.` : soon > 0 ? `${soon} bientôt` : 'OK'}
                       </span>

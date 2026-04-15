@@ -2,14 +2,18 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import { QK } from '../../constants'
 import { toast } from 'sonner'
+import { useAuth } from '../auth/useAuth'
 
 export function useNotes() {
+  const { organization } = useAuth()
   return useQuery({
-    queryKey: QK.NOTES,
+    queryKey: [QK.NOTES, organization?.id],
+    enabled: !!organization?.id,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('pre_meeting_notes')
         .select('*')
+        .eq('organization_id', organization!.id)
         .order('created_at', { ascending: false })
       if (error) throw error
       return data
@@ -19,6 +23,7 @@ export function useNotes() {
 
 export function useCreateNote() {
   const qc = useQueryClient()
+  const { organization } = useAuth()
   return useMutation({
     mutationFn: async (payload: {
       user_id: string
@@ -28,21 +33,20 @@ export function useCreateNote() {
       is_archived: boolean
       tags?: string[]
     }) => {
-      // On tente avec tags, si ça échoue on réessaie sans
+      if (!organization?.id) throw new Error("Organisation introuvable")
       const { tags, ...base } = payload
       try {
         const { data, error } = await supabase
           .from('pre_meeting_notes')
-          .insert({ ...base, tags: tags ?? [] })
+          .insert({ ...base, organization_id: organization.id, tags: tags ?? [] })
           .select()
           .single()
         if (error) throw error
         return data
       } catch {
-        // Fallback sans tags si la colonne n'existe pas encore
         const { data, error } = await supabase
           .from('pre_meeting_notes')
-          .insert(base)
+          .insert({ ...base, organization_id: organization.id })
           .select()
           .single()
         if (error) throw error
@@ -50,7 +54,7 @@ export function useCreateNote() {
       }
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: QK.NOTES })
+      qc.invalidateQueries({ queryKey: [QK.NOTES] })
       toast.success('Note créée')
     },
     onError: (e: any) => toast.error(e.message),
@@ -61,7 +65,6 @@ export function useUpdateNote() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, ...payload }: any) => {
-      // Retire tags si la colonne n'existe pas
       const { tags, ...base } = payload
       try {
         const { data, error } = await supabase
@@ -84,7 +87,7 @@ export function useUpdateNote() {
       }
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: QK.NOTES })
+      qc.invalidateQueries({ queryKey: [QK.NOTES] })
       toast.success('Note mise à jour')
     },
     onError: (e: any) => toast.error(e.message),
@@ -99,7 +102,7 @@ export function useDeleteNote() {
       if (error) throw error
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: QK.NOTES })
+      qc.invalidateQueries({ queryKey: [QK.NOTES] })
       toast.success('Note supprimée')
     },
     onError: (e: any) => toast.error(e.message),

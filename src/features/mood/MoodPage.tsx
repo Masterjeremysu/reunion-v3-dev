@@ -26,7 +26,7 @@ import { toast } from 'sonner'
 const SCORES = [
   { score: 1, emoji: '😔', label: 'Très difficile', color: '#E24B4A', desc: 'Situation critique, intervention nécessaire' },
   { score: 2, emoji: '😕', label: 'Difficile',       color: '#EF9F27', desc: 'Tensions perceptibles, à surveiller' },
-  { score: 3, emoji: '😐', label: 'Neutre',          color: '#8b90a4', desc: 'Ambiance stable, sans signe fort' },
+  { score: 3, emoji: '😐', label: 'Neutre',          color: 'var(--color-text-muted)', desc: 'Ambiance stable, sans signe fort' },
   { score: 4, emoji: '🙂', label: 'Bien',            color: '#378ADD', desc: 'Atmosphère positive et constructive' },
   { score: 5, emoji: '😄', label: 'Excellent',       color: '#1D9E75', desc: 'Énergie collective au top' },
 ]
@@ -39,8 +39,8 @@ const MoodTooltip = ({ active, payload, label }: any) => {
   const v = payload[0]?.value
   const conf = v ? scoreConf(v) : null
   return (
-    <div style={{ background: '#161b26', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '10px 14px' }}>
-      <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', margin: '0 0 4px', fontFamily: 'monospace' }}>{label}</p>
+    <div style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border2)', borderRadius: 10, padding: '10px 14px' }}>
+      <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '0 0 4px', fontFamily: 'monospace' }}>{label}</p>
       {conf && (
         <p style={{ fontSize: 14, fontWeight: 700, color: conf.color, margin: 0, fontFamily: 'monospace' }}>
           {conf.emoji} {v?.toFixed(1)} — {conf.label}
@@ -60,8 +60,8 @@ function ScoreButton({ s, selected, onClick }: { s: typeof SCORES[0]; selected: 
       onMouseLeave={() => setHovered(false)}
       style={{
         flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-        padding: '16px 8px', borderRadius: 14, border: `2px solid ${selected || hovered ? s.color : 'rgba(255,255,255,0.06)'}`,
-        background: selected ? `${s.color}12` : hovered ? `${s.color}08` : 'rgba(255,255,255,0.02)',
+        padding: '16px 8px', borderRadius: 14, border: `2px solid ${selected || hovered ? s.color : 'var(--color-border)'}`,
+        background: selected ? `${s.color}12` : hovered ? `${s.color}08` : 'var(--color-border)',
         cursor: 'pointer', transition: 'all 0.18s', position: 'relative',
       }}
     >
@@ -69,7 +69,7 @@ function ScoreButton({ s, selected, onClick }: { s: typeof SCORES[0]; selected: 
         <div style={{ position: 'absolute', top: -1, left: -1, right: -1, height: 3, background: s.color, borderRadius: '14px 14px 0 0' }} />
       )}
       <span style={{ fontSize: 28, lineHeight: 1, filter: selected ? 'none' : 'grayscale(40%)', transition: 'filter 0.18s' }}>{s.emoji}</span>
-      <span style={{ fontSize: 11, fontWeight: 700, color: selected ? s.color : 'rgba(255,255,255,0.4)', fontFamily: 'monospace', transition: 'color 0.18s' }}>
+      <span style={{ fontSize: 11, fontWeight: 700, color: selected ? s.color : 'var(--color-text-muted)', fontFamily: 'monospace', transition: 'color 0.18s' }}>
         {s.label}
       </span>
     </button>
@@ -86,8 +86,8 @@ function StatCard({ label, value, sub, color, icon: Icon }: {
         <Icon style={{ width: 12, height: 12, color }} />
         <span style={{ fontSize: 10, color, fontFamily: 'monospace', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600 }}>{label}</span>
       </div>
-      <p style={{ fontSize: 28, fontWeight: 800, color: '#fff', margin: 0, fontFamily: 'monospace', letterSpacing: '-0.04em', lineHeight: 1 }}>{value}</p>
-      {sub && <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', margin: '6px 0 0', fontFamily: 'monospace' }}>{sub}</p>}
+      <p style={{ fontSize: 28, fontWeight: 800, color: 'var(--color-text-main)', margin: 0, fontFamily: 'monospace', letterSpacing: '-0.04em', lineHeight: 1 }}>{value}</p>
+      {sub && <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '6px 0 0', fontFamily: 'monospace' }}>{sub}</p>}
     </div>
   )
 }
@@ -95,7 +95,7 @@ function StatCard({ label, value, sub, color, icon: Icon }: {
 // ─── Trend indicator ──────────────────────────────────────────────────────────
 function TrendBadge({ current, previous }: { current: number; previous: number }) {
   const delta = Math.round((current - previous) * 10) / 10
-  if (Math.abs(delta) < 0.1) return <span style={{ fontSize: 11, color: '#565c75', fontFamily: 'monospace' }}>= stable</span>
+  if (Math.abs(delta) < 0.1) return <span style={{ fontSize: 11, color: 'var(--color-text-faded)', fontFamily: 'monospace' }}>= stable</span>
   const up = delta > 0
   const Icon = up ? TrendingUp : TrendingDown
   const color = up ? '#1D9E75' : '#E24B4A'
@@ -199,7 +199,7 @@ export function MoodPage() {
           : format(wStart, "'S'ww", { locale: fr }),
         score: avg ? Math.round(avg * 10) / 10 : null,
         count: bucket.length,
-        color: avg ? scoreConf(avg).color : '#565c75',
+        color: avg ? scoreConf(avg).color : 'var(--color-text-faded)',
       }
     })
   }, [moods, period])
@@ -229,19 +229,19 @@ export function MoodPage() {
   const conf = stats ? scoreConf(stats.currentAvg) : null
 
   return (
-    <div style={{ background: '#0a0c12', minHeight: '100vh', overflowY: 'auto' }}>
+    <div style={{ background: 'var(--color-bg-app)', minHeight: '100vh', overflowY: 'auto' }}>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}} @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.6;transform:scale(0.92)}} @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}`}</style>
 
       {/* Header */}
       <div style={{
         padding: '24px 28px 20px',
-        borderBottom: '1px solid rgba(255,255,255,0.05)',
+        borderBottom: '1px solid var(--color-border)',
         background: conf ? `linear-gradient(180deg, ${conf.color}06 0%, transparent 100%)` : 'transparent',
       }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
           <div>
-            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 4px' }}>Baromètre d'équipe</p>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: '#fff', margin: 0, letterSpacing: '-0.03em' }}>
+            <p style={{ fontSize: 10, color: 'var(--color-text-muted)', fontFamily: 'monospace', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 4px' }}>Baromètre d'équipe</p>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--color-text-main)', margin: 0, letterSpacing: '-0.03em' }}>
               Climat social
             </h1>
             {stats && (
@@ -258,10 +258,10 @@ export function MoodPage() {
           </div>
 
           {/* Period selector */}
-          <div style={{ display: 'flex', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: 3 }}>
+          <div style={{ display: 'flex', background: 'var(--color-bg-input)', border: '1px solid var(--color-border)', borderRadius: 10, padding: 3 }}>
             {([['week', 'Cette semaine'], ['month', 'Ce mois'], ['all', 'Tout']] as const).map(([key, label]) => (
               <button key={key} onClick={() => setPeriod(key)}
-                style={{ padding: '5px 12px', fontSize: 11, borderRadius: 8, border: 'none', cursor: 'pointer', transition: 'all 0.15s', background: period === key ? 'rgba(255,255,255,0.1)' : 'transparent', color: period === key ? '#e8eaf0' : 'rgba(255,255,255,0.35)', fontFamily: 'monospace' }}>
+                style={{ padding: '5px 12px', fontSize: 11, borderRadius: 8, border: 'none', cursor: 'pointer', transition: 'all 0.15s', background: period === key ? 'var(--color-border2)' : 'transparent', color: period === key ? 'var(--color-text-main)' : 'var(--color-text-muted)', fontFamily: 'monospace' }}>
                 {label}
               </button>
             ))}
@@ -310,8 +310,8 @@ export function MoodPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
           {/* Trend chart */}
-          <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: '18px 20px' }}>
-            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', fontFamily: 'monospace', margin: '0 0 16px' }}>
+          <div style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)', borderRadius: 14, padding: '18px 20px' }}>
+            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-text-faded)', fontFamily: 'monospace', margin: '0 0 16px' }}>
               Évolution du score
             </p>
             <ResponsiveContainer width="100%" height={180}>
@@ -322,9 +322,9 @@ export function MoodPage() {
                     <stop offset="95%" stopColor="#7F77DD" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="label" tick={{ fill: '#565c75', fontSize: 10, fontFamily: 'monospace' }} axisLine={false} tickLine={false} />
-                <YAxis domain={[1, 5]} ticks={[1, 2, 3, 4, 5]} tick={{ fill: '#565c75', fontSize: 10 }} axisLine={false} tickLine={false} />
-                <ReferenceLine y={3} stroke="rgba(255,255,255,0.08)" strokeDasharray="4 4" />
+                <XAxis dataKey="label" tick={{ fill: 'var(--color-text-faded)', fontSize: 10, fontFamily: 'monospace' }} axisLine={false} tickLine={false} />
+                <YAxis domain={[1, 5]} ticks={[1, 2, 3, 4, 5]} tick={{ fill: 'var(--color-text-faded)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <ReferenceLine y={3} stroke="var(--color-border)" strokeDasharray="4 4" />
                 <ReferenceLine y={4} stroke="#1D9E7520" strokeDasharray="4 4" />
                 <Tooltip content={<MoodTooltip />} />
                 <Area type="monotone" dataKey="score" stroke="#7F77DD" strokeWidth={2.5} fill="url(#moodGrad)"
@@ -332,7 +332,7 @@ export function MoodPage() {
                     const { cx, cy, payload } = props
                     if (!payload.score) return <g key={props.key} />
                     const c = scoreConf(payload.score)
-                    return <circle key={props.key} cx={cx} cy={cy} r={4} fill={c.color} stroke="#0a0c12" strokeWidth={2} />
+                    return <circle key={props.key} cx={cx} cy={cy} r={4} fill={c.color} stroke="var(--color-bg-app)" strokeWidth={2} />
                   }}
                 />
               </AreaChart>
@@ -341,8 +341,8 @@ export function MoodPage() {
 
           {/* Distribution bar chart */}
           {stats && (
-            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: '18px 20px' }}>
-              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', fontFamily: 'monospace', margin: '0 0 16px' }}>
+            <div style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)', borderRadius: 14, padding: '18px 20px' }}>
+              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-text-faded)', fontFamily: 'monospace', margin: '0 0 16px' }}>
                 Distribution des scores
               </p>
               <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
@@ -352,12 +352,12 @@ export function MoodPage() {
                   const pct = max > 0 ? (d.count / max) * 100 : 0
                   return (
                     <div key={d.score} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: d.count > 0 ? conf.color : 'rgba(255,255,255,0.2)', fontFamily: 'monospace' }}>{d.count}</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: d.count > 0 ? conf.color : 'var(--color-text-faded)', fontFamily: 'monospace' }}>{d.count}</span>
                       <div style={{ width: '100%', height: 80, display: 'flex', alignItems: 'flex-end' }}>
-                        <div style={{ width: '100%', height: `${Math.max(pct, 4)}%`, background: d.count > 0 ? `${conf.color}30` : 'rgba(255,255,255,0.04)', border: `1px solid ${d.count > 0 ? conf.color + '40' : 'rgba(255,255,255,0.05)'}`, borderRadius: '6px 6px 0 0', transition: 'height 0.6s ease' }} />
+                        <div style={{ width: '100%', height: `${Math.max(pct, 4)}%`, background: d.count > 0 ? `${conf.color}30` : 'var(--color-border)', border: `1px solid ${d.count > 0 ? conf.color + '40' : 'var(--color-border)'}`, borderRadius: '6px 6px 0 0', transition: 'height 0.6s ease' }} />
                       </div>
                       <span style={{ fontSize: 16 }}>{conf.emoji}</span>
-                      <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace', textAlign: 'center' }}>{conf.label}</span>
+                      <span style={{ fontSize: 9, color: 'var(--color-text-muted)', fontFamily: 'monospace', textAlign: 'center' }}>{conf.label}</span>
                     </div>
                   )
                 })}
@@ -366,19 +366,19 @@ export function MoodPage() {
           )}
 
           {/* History */}
-          <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: '18px 20px' }}>
-            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', fontFamily: 'monospace', margin: '0 0 14px' }}>
+          <div style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)', borderRadius: 14, padding: '18px 20px' }}>
+            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-text-faded)', fontFamily: 'monospace', margin: '0 0 14px' }}>
               Historique récent
             </p>
             {recentMoods.length === 0 ? (
-              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.2)', textAlign: 'center', padding: '20px 0' }}>Aucune entrée</p>
+              <p style={{ fontSize: 13, color: 'var(--color-text-faded)', textAlign: 'center', padding: '20px 0' }}>Aucune entrée</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                 {recentMoods.map((m, i) => {
                   const c = scoreConf(m.mood_score)
                   const d = new Date(m.created_at)
                   return (
-                    <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 0', borderBottom: i < recentMoods.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                    <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 0', borderBottom: i < recentMoods.length - 1 ? '1px solid var(--color-border)' : 'none' }}>
                       {/* Score pill */}
                       <div style={{ width: 42, height: 42, borderRadius: 12, background: `${c.color}12`, border: `1px solid ${c.color}25`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <span style={{ fontSize: 18, lineHeight: 1 }}>{c.emoji}</span>
@@ -386,15 +386,15 @@ export function MoodPage() {
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span style={{ fontSize: 13, fontWeight: 700, color: c.color, fontFamily: 'monospace' }}>{m.mood_score}/5</span>
-                          <span style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.6)' }}>{c.label}</span>
+                          <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-main)' }}>{c.label}</span>
                         </div>
                         {m.comment && (
-                          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', margin: '3px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontStyle: 'italic' }}>"{m.comment}"</p>
+                          <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '3px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontStyle: 'italic' }}>"{m.comment}"</p>
                         )}
                       </div>
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                        <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', margin: 0, fontFamily: 'monospace' }}>{fRelative(m.created_at)}</p>
-                        <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.15)', margin: '2px 0 0', fontFamily: 'monospace' }}>{format(d, 'dd/MM', { locale: fr })}</p>
+                        <p style={{ fontSize: 10, color: 'var(--color-text-faded)', margin: 0, fontFamily: 'monospace' }}>{fRelative(m.created_at)}</p>
+                        <p style={{ fontSize: 10, color: 'var(--color-text-faded)', margin: '2px 0 0', fontFamily: 'monospace' }}>{format(d, 'dd/MM', { locale: fr })}</p>
                       </div>
                     </div>
                   )
@@ -409,21 +409,21 @@ export function MoodPage() {
 
           {/* Input card */}
           <div style={{
-            background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)',
+            background: 'var(--color-bg-card)', border: '1px solid var(--color-border2)',
             borderRadius: 16, overflow: 'hidden',
             boxShadow: expandForm ? '0 0 0 1px rgba(29,158,117,0.15)' : 'none',
             transition: 'box-shadow 0.3s',
           }}>
             <button
               onClick={() => setExpandForm(!expandForm)}
-              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', background: 'transparent', border: 'none', cursor: 'pointer', borderBottom: expandForm ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', background: 'transparent', border: 'none', cursor: 'pointer', borderBottom: expandForm ? '1px solid var(--color-border)' : 'none' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#1D9E75', animation: 'pulse 2s ease-in-out infinite' }} />
-                <span style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-main)' }}>
                   {submitted ? '✓ Enregistré !' : todayEntry ? `Aujourd'hui : ${scoreConf(todayEntry.mood_score).emoji} ${todayEntry.mood_score}/5` : "Comment va l'équipe ?"}
                 </span>
               </div>
-              <ChevronDown style={{ width: 14, height: 14, color: 'rgba(255,255,255,0.3)', transform: expandForm ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+              <ChevronDown style={{ width: 14, height: 14, color: 'var(--color-text-muted)', transform: expandForm ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
             </button>
 
             {expandForm && (
@@ -445,17 +445,17 @@ export function MoodPage() {
                   value={comment} onChange={e => setComment(e.target.value)}
                   placeholder="Précisez si nécessaire... (optionnel)"
                   rows={3}
-                  style={{ width: '100%', background: '#1e2535', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '10px 12px', fontSize: 13, color: '#fff', outline: 'none', resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 12 }}
+                  style={{ width: '100%', background: 'var(--color-bg-input)', border: '1px solid var(--color-border2)', borderRadius: 10, padding: '10px 12px', fontSize: 13, color: 'var(--color-text-main)', outline: 'none', resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 12 }}
                 />
 
                 <button onClick={handleSubmit} disabled={submitting}
-                  style={{ width: '100%', padding: '11px 0', background: SCORES[score - 1].color, border: 'none', borderRadius: 10, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'opacity 0.15s', opacity: submitting ? 0.6 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  style={{ width: '100%', padding: '11px 0', background: SCORES[score - 1].color, border: 'none', borderRadius: 10, color: 'var(--color-text-main)', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'opacity 0.15s', opacity: submitting ? 0.6 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                   {submitting ? <Loader2 style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} /> : <Heart style={{ width: 14, height: 14 }} />}
                   Enregistrer mon humeur
                 </button>
 
                 {todayEntry && (
-                  <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', textAlign: 'center', margin: '10px 0 0', fontFamily: 'monospace' }}>
+                  <p style={{ fontSize: 11, color: 'var(--color-text-faded)', textAlign: 'center', margin: '10px 0 0', fontFamily: 'monospace' }}>
                     Tu as déjà renseigné aujourd'hui ({scoreConf(todayEntry.mood_score).emoji} {todayEntry.mood_score}/5). Tu peux quand même remettre à jour.
                   </p>
                 )}
@@ -464,15 +464,15 @@ export function MoodPage() {
           </div>
 
           {/* Score guide */}
-          <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: '16px 18px' }}>
-            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', fontFamily: 'monospace', margin: '0 0 12px' }}>Guide d'interprétation</p>
+          <div style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)', borderRadius: 14, padding: '16px 18px' }}>
+            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-text-faded)', fontFamily: 'monospace', margin: '0 0 12px' }}>Guide d'interprétation</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {[...SCORES].reverse().map(s => (
                 <div key={s.score} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: `${s.color}06`, border: `1px solid ${s.color}15`, borderRadius: 8 }}>
                   <span style={{ fontSize: 16, flexShrink: 0 }}>{s.emoji}</span>
                   <div style={{ flex: 1 }}>
                     <span style={{ fontSize: 12, fontWeight: 600, color: s.color }}>{s.score}/5 · {s.label}</span>
-                    <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', margin: '1px 0 0', fontFamily: 'monospace' }}>{s.desc}</p>
+                    <p style={{ fontSize: 10, color: 'var(--color-text-muted)', margin: '1px 0 0', fontFamily: 'monospace' }}>{s.desc}</p>
                   </div>
                 </div>
               ))}
@@ -487,7 +487,7 @@ export function MoodPage() {
               </p>
               <ul style={{ margin: 0, padding: '0 0 0 16px', display: 'flex', flexDirection: 'column', gap: 5 }}>
                 {['Prévoir un point individuel rapide', 'Vérifier la charge de travail', 'Proposer un moment collectif informel', 'Identifier les facteurs de stress récents'].map(tip => (
-                  <li key={tip} style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5 }}>{tip}</li>
+                  <li key={tip} style={{ fontSize: 12, color: 'var(--color-text-main)', lineHeight: 1.5 }}>{tip}</li>
                 ))}
               </ul>
             </div>
@@ -497,7 +497,7 @@ export function MoodPage() {
             <div style={{ background: '#1D9E7508', border: '1px solid #1D9E7525', borderRadius: 14, padding: '14px 18px', animation: 'fadeIn 0.4s ease', textAlign: 'center' }}>
               <p style={{ fontSize: 22, margin: '0 0 6px' }}>🏆</p>
               <p style={{ fontSize: 13, fontWeight: 600, color: '#5DCAA5', margin: '0 0 4px' }}>Série de {stats.streak} humeurs positives !</p>
-              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', margin: 0, fontFamily: 'monospace' }}>L'équipe est dans une bonne dynamique. Continuez comme ça.</p>
+              <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: 0, fontFamily: 'monospace' }}>L'équipe est dans une bonne dynamique. Continuez comme ça.</p>
             </div>
           )}
         </div>

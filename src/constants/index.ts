@@ -11,6 +11,7 @@ export const ROUTES = {
   MOOD: '/mood',
   SCHEDULE: '/schedule',
   LEAVES: '/leaves',
+  ADMIN: '/admin',
 } as const
 
 export const QK = {

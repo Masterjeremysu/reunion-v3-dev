@@ -85,31 +85,31 @@ export function GlobalSearch({ onClose }: { onClose: () => void }) {
   const flat = Object.values(grouped).flat()
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '15vh', background: 'rgba(0,0,0,0.7)' }}
+    <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '15vh', background: 'var(--color-overlay)' }}
       onClick={e => e.target === e.currentTarget && onClose()}>
       <style>{`@keyframes fadeDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}} mark{background:#1D9E7530!important;color:#5DCAA5!important;border-radius:2px;padding:0 1px}`}</style>
 
-      <div style={{ width: 580, background: '#0d1018', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, overflow: 'hidden', animation: 'fadeDown .18s ease', boxShadow: '0 24px 60px rgba(0,0,0,0.7)' }}>
+      <div style={{ width: 580, background: '#0d1018', border: '1px solid var(--color-border2)', borderRadius: 16, overflow: 'hidden', animation: 'fadeDown .18s ease', boxShadow: '0 24px 60px var(--color-overlay)' }}>
 
         {/* Input */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', borderBottom: '1px solid var(--color-border)' }}>
           <Search style={{ width: 16, height: 16, color: '#1D9E75', flexShrink: 0 }} />
           <input ref={inputRef} value={query} onChange={e => setQuery(e.target.value)}
             placeholder="Rechercher une réunion, action, collègue, véhicule..."
-            style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 15, color: '#e8eaf0', fontFamily: 'inherit' }} />
+            style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 15, color: 'var(--color-text-main)', fontFamily: 'inherit' }} />
           {query && (
-            <button onClick={() => setQuery('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', display: 'flex', padding: 2 }}>
+            <button onClick={() => setQuery('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex', padding: 2 }}>
               <X style={{ width: 14, height: 14 }} />
             </button>
           )}
-          <kbd style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 5, padding: '2px 7px', fontFamily: 'monospace' }}>Esc</kbd>
+          <kbd style={{ fontSize: 10, color: 'var(--color-text-faded)', background: 'var(--color-bg-input)', border: '1px solid var(--color-border2)', borderRadius: 5, padding: '2px 7px', fontFamily: 'monospace' }}>Esc</kbd>
         </div>
 
         {/* Results */}
         {query.length >= 2 && (
           <div style={{ maxHeight: 380, overflowY: 'auto' }}>
             {flat.length === 0 ? (
-              <div style={{ padding: '24px 18px', textAlign: 'center', fontSize: 13, color: 'rgba(255,255,255,0.25)' }}>
+              <div style={{ padding: '24px 18px', textAlign: 'center', fontSize: 13, color: 'var(--color-text-faded)' }}>
                 Aucun résultat pour « {query} »
               </div>
             ) : (
@@ -127,14 +127,14 @@ export function GlobalSearch({ onClose }: { onClose: () => void }) {
                       return (
                         <button key={r.id} onClick={() => goTo(r)}
                           onMouseEnter={() => setSelected(idx)}
-                          style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '10px 18px', background: isSelected ? 'rgba(255,255,255,0.05)' : 'transparent', border: 'none', cursor: 'pointer', transition: 'background .1s', borderLeft: isSelected ? `2px solid ${conf.color}` : '2px solid transparent' }}>
+                          style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '10px 18px', background: isSelected ? 'var(--color-border)' : 'transparent', border: 'none', cursor: 'pointer', transition: 'background .1s', borderLeft: isSelected ? `2px solid ${conf.color}` : '2px solid transparent' }}>
                           <div style={{ width: 30, height: 30, borderRadius: 8, background: `${conf.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                             <Icon style={{ width: 14, height: 14, color: conf.color }} />
                           </div>
                           <div style={{ flex: 1, textAlign: 'left', minWidth: 0 }}>
-                            <p style={{ fontSize: 13, color: '#e8eaf0', margin: 0, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                            <p style={{ fontSize: 13, color: 'var(--color-text-main)', margin: 0, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                               dangerouslySetInnerHTML={{ __html: highlight(r.title, query) }} />
-                            {r.subtitle && <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', margin: '1px 0 0' }}>{r.subtitle}</p>}
+                            {r.subtitle && <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '1px 0 0' }}>{r.subtitle}</p>}
                           </div>
                           {isSelected && <ArrowRight style={{ width: 13, height: 13, color: conf.color, flexShrink: 0 }} />}
                         </button>
@@ -153,7 +153,7 @@ export function GlobalSearch({ onClose }: { onClose: () => void }) {
             {Object.entries(TYPE_CONFIG).map(([type, conf]) => {
               const Icon = conf.icon
               return (
-                <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'rgba(255,255,255,0.25)' }}>
+                <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--color-text-faded)' }}>
                   <Icon style={{ width: 12, height: 12, color: conf.color }} />
                   {conf.label}s
                 </div>
@@ -162,10 +162,10 @@ export function GlobalSearch({ onClose }: { onClose: () => void }) {
           </div>
         )}
 
-        <div style={{ padding: '8px 18px', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: 16, fontSize: 11, color: 'rgba(255,255,255,0.2)' }}>
-          <span><kbd style={{ fontFamily: 'monospace', background: 'rgba(255,255,255,0.06)', padding: '1px 6px', borderRadius: 4, border: '1px solid rgba(255,255,255,0.1)' }}>↑↓</kbd> naviguer</span>
-          <span><kbd style={{ fontFamily: 'monospace', background: 'rgba(255,255,255,0.06)', padding: '1px 6px', borderRadius: 4, border: '1px solid rgba(255,255,255,0.1)' }}>↵</kbd> ouvrir</span>
-          <span><kbd style={{ fontFamily: 'monospace', background: 'rgba(255,255,255,0.06)', padding: '1px 6px', borderRadius: 4, border: '1px solid rgba(255,255,255,0.1)' }}>Esc</kbd> fermer</span>
+        <div style={{ padding: '8px 18px', borderTop: '1px solid var(--color-border)', display: 'flex', gap: 16, fontSize: 11, color: 'var(--color-text-faded)' }}>
+          <span><kbd style={{ fontFamily: 'monospace', background: 'var(--color-bg-input)', padding: '1px 6px', borderRadius: 4, border: '1px solid var(--color-border2)' }}>↑↓</kbd> naviguer</span>
+          <span><kbd style={{ fontFamily: 'monospace', background: 'var(--color-bg-input)', padding: '1px 6px', borderRadius: 4, border: '1px solid var(--color-border2)' }}>↵</kbd> ouvrir</span>
+          <span><kbd style={{ fontFamily: 'monospace', background: 'var(--color-bg-input)', padding: '1px 6px', borderRadius: 4, border: '1px solid var(--color-border2)' }}>Esc</kbd> fermer</span>
         </div>
       </div>
     </div>

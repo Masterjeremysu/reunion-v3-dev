@@ -15,44 +15,54 @@ import { VehiclesPage } from './features/vehicles/VehiclesPage'
 import { MoodPage } from './features/mood/MoodPage'
 import { SchedulePage } from './features/schedule/SchedulePage'
 import { LeavePage } from './features/leaves/LeavePage'
+import { AdminPage } from './features/admin/AdminPage'
+
+import { AuthProvider } from './features/auth/useAuth'
+
+import { ThemeProvider } from './components/ThemeProvider'
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Routes>
-          <Route path={ROUTES.LOGIN} element={<AuthPage />} />
-          <Route
-            element={
-              <AuthGuard>
-                <ShellLayout />
-              </AuthGuard>
-            }
-          >
-            <Route path={ROUTES.DASHBOARD}    element={<DashboardPage />} />
-            <Route path={ROUTES.MEETINGS}     element={<MeetingsPage />} />
-            <Route path={ROUTES.ACTIONS}      element={<ActionsPage />} />
-            <Route path={ROUTES.COLLEAGUES}   element={<ColleaguesPage />} />
-            <Route path={ROUTES.NOTES}        element={<NotesPage />} />
-            <Route path={ROUTES.CONSUMABLES}  element={<ConsumablesPage />} />
-            <Route path={ROUTES.VEHICLES}     element={<VehiclesPage />} />
-            <Route path={ROUTES.MOOD}         element={<MoodPage />} />
-            <Route path={ROUTES.SCHEDULE}     element={<SchedulePage />} />
-            <Route path="/leaves" element={<LeavePage />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-      <Toaster
-        theme="dark"
-        position="bottom-right"
-        toastOptions={{
-          style: {
-            background: '#1e2333',
-            border: '1px solid rgba(255,255,255,0.1)',
-            color: '#e8eaf0',
-          },
-        }}
-      />
-    </QueryClientProvider>
+    <ThemeProvider defaultTheme="dark">
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <Routes>
+              <Route path={ROUTES.LOGIN} element={<AuthPage />} />
+            <Route
+              element={
+                <AuthGuard>
+                  <ShellLayout />
+                </AuthGuard>
+              }
+            >
+              <Route path={ROUTES.DASHBOARD}    element={<DashboardPage />} />
+              <Route path={ROUTES.MEETINGS}     element={<MeetingsPage />} />
+              <Route path={ROUTES.ACTIONS}      element={<ActionsPage />} />
+              <Route path={ROUTES.COLLEAGUES}   element={<ColleaguesPage />} />
+              <Route path={ROUTES.NOTES}        element={<NotesPage />} />
+              <Route path={ROUTES.CONSUMABLES}  element={<ConsumablesPage />} />
+              <Route path={ROUTES.VEHICLES}     element={<VehiclesPage />} />
+              <Route path={ROUTES.MOOD}         element={<MoodPage />} />
+              <Route path={ROUTES.SCHEDULE}     element={<SchedulePage />} />
+              <Route path={ROUTES.LEAVES}       element={<LeavePage />} />
+              <Route path={ROUTES.ADMIN}        element={<AdminPage />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+        <Toaster
+          theme="dark"
+          position="bottom-right"
+          toastOptions={{
+            style: {
+              background: 'var(--color-bg-card)',
+              border: '1px solid var(--color-border)',
+              color: 'var(--color-text-main)',
+            },
+          }}
+        />
+        </AuthProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   )
 }

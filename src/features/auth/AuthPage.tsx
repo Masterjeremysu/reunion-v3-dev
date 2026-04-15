@@ -121,6 +121,7 @@ export function AuthPage() {
   const { session, loading } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [inviteCode, setInviteCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [mode, setMode] = useState<'login' | 'signup'>('login')
   const [focused, setFocused] = useState<string | null>(null)
@@ -135,9 +136,36 @@ export function AuthPage() {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
       } else {
-        const { error } = await supabase.auth.signUp({ email, password })
+        const { data, error } = await supabase.auth.signUp({ email, password })
         if (error) throw error
-        toast.success('Vérifiez votre email pour confirmer votre compte')
+        
+        if (data.user) {
+          if (inviteCode && inviteCode.trim().length === 36) {
+            // Join existing org
+            await supabase.from('user_roles').insert({
+              user_id: data.user.id,
+              organization_id: inviteCode.trim(),
+              role: 'employee'
+            })
+            toast.success('Compte créé avec succès ! Vous avez rejoint l\'organisation.')
+          } else {
+            // Création SaaS initiale (Admin)
+            const { data: org, error: orgErr } = await supabase
+              .from('organizations')
+              .insert({ name: 'Mon Entreprise', owner_id: data.user.id })
+              .select()
+              .single()
+              
+            if (org && !orgErr) {
+              await supabase.from('user_roles').insert({
+                user_id: data.user.id,
+                organization_id: org.id,
+                role: 'admin'
+              })
+            }
+            toast.success('Compte créé avec succès ! Votre Espace de travail est prêt.')
+          }
+        }
       }
     } catch (err: any) {
       toast.error(err.message || 'Erreur de connexion')
@@ -194,7 +222,7 @@ export function AuthPage() {
               </svg>
             </div>
             <div>
-              <p style={{ fontSize: 16, fontWeight: 700, color: '#fff', margin: 0, letterSpacing: '-0.02em' }}>Réunions GT</p>
+              <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text-main)', margin: 0, letterSpacing: '-0.02em' }}>Réunions GT</p>
               <p style={{ fontSize: 10, color: '#00E5A0', margin: 0, fontFamily: "'DM Mono', monospace", letterSpacing: '0.08em' }}>v3.0 · SYSTÈME OPÉRATIONNEL</p>
             </div>
           </div>
@@ -206,18 +234,18 @@ export function AuthPage() {
             // Plateforme de gestion d'équipe
           </p>
           <h1 style={{
-            fontSize: 'clamp(32px, 4vw, 52px)', fontWeight: 800, color: '#fff',
+            fontSize: 'clamp(32px, 4vw, 52px)', fontWeight: 800, color: 'var(--color-text-main)',
             margin: '0 0 12px', lineHeight: 1.08, letterSpacing: '-0.04em',
           }}>
             Piloter.<br />
             <span style={{ color: '#00E5A0' }}>Anticiper.</span><br />
             Décider.
           </h1>
-          <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.4)', margin: '0 0 32px', lineHeight: 1.6, maxWidth: 420 }}>
+          <p style={{ fontSize: 15, color: 'var(--color-text-muted)', margin: '0 0 32px', lineHeight: 1.6, maxWidth: 420 }}>
             Réunions, actions, parc auto, équipe — tout ce qui compte pour votre activité terrain, centralisé et accessible.
           </p>
-          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, color: 'rgba(255,255,255,0.3)', lineHeight: 1.8 }}>
-            <span style={{ color: 'rgba(255,255,255,0.15)' }}>{'>'} </span>
+          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.8 }}>
+            <span style={{ color: 'var(--color-text-faded)' }}>{'>'} </span>
             <TypingText texts={[
               'Gérer les réunions hebdo',
               "Suivre les points d'action",
@@ -240,7 +268,7 @@ export function AuthPage() {
               {tag.toUpperCase()}
             </span>
           ))}
-          <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.15)', fontFamily: "'DM Mono', monospace", alignSelf: 'center', marginLeft: 4 }}>
+          <span style={{ fontSize: 10, color: 'var(--color-text-faded)', fontFamily: "'DM Mono', monospace", alignSelf: 'center', marginLeft: 4 }}>
             · Conçu en France 🇫🇷
           </span>
         </div>
@@ -280,10 +308,10 @@ export function AuthPage() {
               <p style={{ fontSize: 10, color: '#00E5A0', fontFamily: "'DM Mono', monospace", letterSpacing: '0.15em', margin: '0 0 6px' }}>
                 {mode === 'login' ? '// AUTHENTIFICATION' : '// CRÉATION DE COMPTE'}
               </p>
-              <h2 style={{ fontSize: 22, fontWeight: 800, color: '#fff', margin: 0, letterSpacing: '-0.03em' }}>
+              <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--color-text-main)', margin: 0, letterSpacing: '-0.03em' }}>
                 {mode === 'login' ? 'Accès système' : 'Nouveau compte'}
               </h2>
-              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', margin: '6px 0 0', fontFamily: "'DM Mono', monospace" }}>
+              <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '6px 0 0', fontFamily: "'DM Mono', monospace" }}>
                 {mode === 'login' ? 'Entrez vos identifiants pour continuer' : 'Créez votre espace de travail'}
               </p>
             </div>
@@ -297,7 +325,7 @@ export function AuthPage() {
                 </label>
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 10,
-                  background: 'rgba(255,255,255,0.03)',
+                  background: 'var(--color-bg-input)',
                   border: `1px solid ${focused === 'email' ? '#00E5A0' : 'rgba(255,255,255,0.08)'}`,
                   borderRadius: 10, padding: '0 14px', height: 46,
                   transition: 'border-color 0.2s, background 0.2s',
@@ -310,7 +338,7 @@ export function AuthPage() {
                     type="email" value={email} onChange={e => setEmail(e.target.value)}
                     placeholder="vous@entreprise.fr" required
                     onFocus={() => setFocused('email')} onBlur={() => setFocused(null)}
-                    style={{ flex: 1, background: 'transparent', border: 'none', fontSize: 14, color: '#fff', fontFamily: "'DM Mono', monospace", letterSpacing: '0.02em' }}
+                    style={{ flex: 1, background: 'transparent', border: 'none', fontSize: 14, color: 'var(--color-text-main)', fontFamily: "'DM Mono', monospace", letterSpacing: '0.02em' }}
                   />
                 </div>
               </div>
@@ -322,7 +350,7 @@ export function AuthPage() {
                 </label>
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 10,
-                  background: 'rgba(255,255,255,0.03)',
+                  background: 'var(--color-bg-input)',
                   border: `1px solid ${focused === 'pass' ? '#00E5A0' : 'rgba(255,255,255,0.08)'}`,
                   borderRadius: 10, padding: '0 14px', height: 46,
                   transition: 'border-color 0.2s, background 0.2s',
@@ -335,10 +363,37 @@ export function AuthPage() {
                     type="password" value={password} onChange={e => setPassword(e.target.value)}
                     placeholder="••••••••••••" required
                     onFocus={() => setFocused('pass')} onBlur={() => setFocused(null)}
-                    style={{ flex: 1, background: 'transparent', border: 'none', fontSize: 14, color: '#fff', fontFamily: "'DM Mono', monospace", letterSpacing: '0.1em' }}
+                    style={{ flex: 1, background: 'transparent', border: 'none', fontSize: 14, color: 'var(--color-text-main)', fontFamily: "'DM Mono', monospace", letterSpacing: '0.1em' }}
                   />
                 </div>
               </div>
+
+              {/* Invite Code pour l'inscription */}
+              {mode === 'signup' && (
+                <div className="field-wrap">
+                  <label style={{ display: 'block', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: focused === 'invite' ? '#00E5A0' : 'rgba(255,255,255,0.3)', fontFamily: "'DM Mono', monospace", marginBottom: 6, transition: 'color 0.2s' }}>
+                    Code d'invitation (Optionnel)
+                  </label>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    background: 'var(--color-bg-input)',
+                    border: `1px solid ${focused === 'invite' ? '#00E5A0' : 'rgba(255,255,255,0.08)'}`,
+                    borderRadius: 10, padding: '0 14px', height: 46,
+                    transition: 'border-color 0.2s, background 0.2s',
+                    ...(focused === 'invite' ? { background: 'rgba(0,229,160,0.04)' } : {}),
+                  }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={focused === 'invite' ? '#00E5A0' : 'rgba(255,255,255,0.2)'} strokeWidth="1.5" strokeLinecap="round" style={{ flexShrink: 0, transition: 'stroke 0.2s' }}>
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                    <input
+                      type="text" value={inviteCode} onChange={e => setInviteCode(e.target.value)}
+                      placeholder="Collez le code à 36 caractères"
+                      onFocus={() => setFocused('invite')} onBlur={() => setFocused(null)}
+                      style={{ flex: 1, background: 'transparent', border: 'none', fontSize: 14, color: 'var(--color-text-main)', fontFamily: "'DM Mono', monospace", letterSpacing: '0.02em' }}
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Submit */}
               <button
@@ -364,9 +419,9 @@ export function AuthPage() {
             </form>
 
             {/* Toggle */}
-            <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid rgba(255,255,255,0.06)', textAlign: 'center' }}>
+            <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--color-border)', textAlign: 'center' }}>
               <button onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'rgba(255,255,255,0.3)', fontFamily: "'DM Mono', monospace", transition: 'color 0.2s' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--color-text-muted)', fontFamily: "'DM Mono', monospace", transition: 'color 0.2s' }}
                 onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = '#00E5A0')}
                 onMouseLeave={e => ((e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.3)')}>
                 {mode === 'login' ? "Pas de compte ? S'inscrire" : 'Déjà un compte ? Se connecter'}
