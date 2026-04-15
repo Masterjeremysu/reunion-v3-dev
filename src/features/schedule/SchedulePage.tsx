@@ -123,7 +123,9 @@ export function SchedulePage() {
         .mission-planned { border-style: dashed !important; opacity: 0.9; }
         .mission-in_progress { background-image: ${STRIPED_BG} !important; border-style: solid !important; animation: moveBg 5s linear infinite; }
         .mission-completed { border-style: solid !important; opacity: 0.85; filter: grayscale(40%); }
-        @keyframes moveBg { 0% { background-position: 0 0; } 100% { background-position: 28px 0; } }
+         @keyframes moveBg { 0% { background-position: 0 0; } 100% { background-position: 28px 0; } }
+         @keyframes pulse-slow { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.1); } }
+         .animate-pulse-slow { animation: pulse-slow 3s ease-in-out infinite; }
       `}</style>
 
       <PageHeader 
@@ -186,8 +188,8 @@ export function SchedulePage() {
             <div style={{ minWidth: viewMode === 'month' ? '1200px' : '900px' }}>
               {/* En-tête Jours */}
               <div className="flex sticky top-0 z-40 bg-[var(--color-bg-card)] border-b border-[var(--color-border)] shadow-sm">
-                <div className="w-64 flex-shrink-0 border-r border-[var(--color-border)] p-3 sticky left-0 z-50 bg-[var(--color-bg-card)]">
-                  <span className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Équipes</span>
+                <div className="w-72 flex-shrink-0 border-r border-[var(--color-border)] p-3 sticky left-0 z-50 bg-[var(--color-bg-card)]">
+                  <span className="text-[10px] font-black text-[var(--color-text-muted)] uppercase tracking-[0.2em]">Équipes</span>
                 </div>
                 <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${daysInView}, minmax(${viewMode === 'month' ? '28px' : '40px'}, 1fr))` }}>
                   {days.map((day: any, i: number) => {
@@ -224,50 +226,82 @@ export function SchedulePage() {
                   const workloadColor = workloadPct > 80 ? '#EF4444' : workloadPct > 40 ? '#F59E0B' : '#10B981'
 
                   return (
-                    <div key={team.id} className="flex border-b border-[var(--color-border)] group hover:bg-[var(--color-bg-input)] transition-colors relative min-h-[70px]">
+                    <div key={team.id} className="flex border-b border-[var(--color-border)] group hover:bg-white/[0.02] transition-colors relative min-h-[100px]">
                       
-                      {/* Colonne de Gauche : Infos Équipe */}
-                      <div className="w-64 flex-shrink-0 p-4 border-r border-[var(--color-border)] bg-[var(--color-bg-card)] z-30 transition-colors group-hover:bg-[var(--color-bg-input)] flex flex-col justify-center sticky left-0 shadow-[2px_0_10px_rgba(0,0,0,0.05)]">
-                        <div className="flex items-center gap-3">
-                          <div className="w-2.5 h-2.5 rounded-full flex-shrink-0 ring-4 ring-[var(--color-bg-input)]" style={{ backgroundColor: team.color }} />
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5">
-                              <p className="text-sm font-semibold text-[var(--color-text-main)] truncate flex-1">{team.name}</p>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setEditingTeam(team); }}
-                                className="opacity-0 group-hover:opacity-100 p-1 text-[var(--color-text-faded)] hover:text-blue-400 hover:bg-blue-500/10 rounded transition-all"
-                                title="Modifier l'équipe"
-                              >
-                                <Edit2 className="w-3 h-3" />
-                              </button>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); if (confirm(`Supprimer l'équipe "${team.name}" et toutes ses missions ?`)) { deleteTeam.mutate(team.id, { onSuccess: () => toast.success('Équipe supprimée') }) } }}
-                                className="opacity-0 group-hover:opacity-100 p-1 text-[var(--color-text-faded)] hover:text-red-500 hover:bg-red-500/10 rounded transition-all"
-                                title="Supprimer l'équipe"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </button>
+                      {/* Colonne de Gauche : Infos Équipe (LOOK PREMIUM) */}
+                      <div className="w-72 flex-shrink-0 p-5 border-r border-[var(--color-border)] bg-[var(--color-bg-sidebar)] z-30 transition-all group-hover:bg-[var(--color-bg-card)] flex flex-col justify-center sticky left-0 shadow-[4px_0_15px_rgba(0,0,0,0.1)]">
+                        <div className="flex flex-col gap-4">
+                          <div className="flex items-start justify-between group/team-header">
+                            <div className="flex items-center gap-3">
+                              <div className="relative">
+                                <div className="w-3 h-3 rounded-full flex-shrink-0 animate-pulse-slow" style={{ backgroundColor: team.color, boxShadow: `0 0 12px ${team.color}` }} />
+                                <div className="absolute inset-0 w-3 h-3 rounded-full opacity-40 blur-[2px]" style={{ backgroundColor: team.color }} />
+                              </div>
+                              <div className="min-w-0">
+                                <h3 className="text-sm font-black text-[var(--color-text-main)] uppercase tracking-tight truncate leading-none">
+                                  {team.name}
+                                </h3>
+                                <p className="text-[10px] text-[var(--color-text-faded)] font-bold mt-1 uppercase tracking-widest opacity-60">
+                                  Équipe de terrain
+                                </p>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-1 mt-1 overflow-hidden">
-                              {team.team_members?.slice(0, 5).map((tm, idx) => (
-                                <div key={tm.id} className="relative ring-2 ring-[var(--color-bg-card)] rounded-full group-hover:ring-[var(--color-bg-input)]" style={{ zIndex: 10 - idx, marginLeft: idx > 0 ? '-10px' : '0' }} title={tm.colleagues?.name}>
-                                  <Avatar name={tm.colleagues?.name || '?'} size="sm" />
+
+                            <div className="flex items-center gap-1 opacity-0 group-hover/team-header:opacity-100 transition-all translate-x-1 group-hover/team-header:translate-x-0">
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setEditingTeam(team); }}
+                                  className="p-1.5 text-[var(--color-text-faded)] hover:text-white hover:bg-white/10 rounded-lg transition-all"
+                                  title="Modifier"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); if (confirm(`Supprimer l'équipe "${team.name}" ?`)) { deleteTeam.mutate(team.id) } }}
+                                  className="p-1.5 text-[var(--color-text-faded)] hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                                  title="Supprimer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+                          </div>
+                          
+                          {/* Avatars Stacked (Plus grands) */}
+                          <div className="flex items-center">
+                            <div className="flex -space-x-2.5">
+                              {team.team_members?.slice(0, 4).map((tm: any, idx: number) => (
+                                <div 
+                                  key={tm.id} 
+                                  className="relative ring-4 ring-[var(--color-bg-sidebar)] group-hover:ring-[var(--color-bg-card)] rounded-full transition-all hover:-translate-y-1 hover:z-50"
+                                  style={{ zIndex: 10 - idx }}
+                                  title={tm.colleagues?.name}
+                                >
+                                  <Avatar name={tm.colleagues?.name || '?'} size="md" />
                                 </div>
                               ))}
-                              {(team.team_members?.length ?? 0) > 5 && (
-                                <span className="text-[9px] font-bold text-[var(--color-text-faded)] ml-1">+{(team.team_members?.length ?? 0) - 5}</span>
+                              {(team.team_members?.length ?? 0) > 4 && (
+                                <div className="w-8 h-8 rounded-full bg-[var(--color-bg-input)] border-4 border-[var(--color-bg-sidebar)] group-hover:border-[var(--color-bg-card)] flex items-center justify-center text-[10px] font-black text-[var(--color-text-faded)] z-0">
+                                  +{(team.team_members?.length ?? 0) - 4}
+                                </div>
                               )}
                             </div>
                           </div>
-                        </div>
-                        {/* Workload bar */}
-                        <div className="mt-2">
-                          <div className="flex justify-between items-center mb-0.5">
-                            <span className="text-[9px] text-[var(--color-text-faded)] font-mono uppercase">Charge</span>
-                            <span className="text-[10px] font-bold font-mono" style={{ color: workloadColor }}>{workloadPct}%</span>
-                          </div>
-                          <div className="h-1 bg-[var(--color-bg-input)] rounded-full overflow-hidden">
-                            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${workloadPct}%`, backgroundColor: workloadColor }} />
+
+                          {/* Workload Section (Plus visuelle) */}
+                          <div className="mt-1">
+                            <div className="flex justify-between items-end mb-1.5">
+                              <span className="text-[10px] text-[var(--color-text-faded)] font-black uppercase tracking-tighter">Planification</span>
+                              <span className="text-xs font-black font-mono tracking-tighter" style={{ color: workloadColor }}>{workloadPct}%</span>
+                            </div>
+                            <div className="h-1.5 bg-[var(--color-bg-input)] rounded-full overflow-hidden border border-white/5 shadow-inner">
+                              <div 
+                                className="h-full rounded-full transition-all duration-700 ease-out" 
+                                style={{ 
+                                  width: `${workloadPct}%`, 
+                                  backgroundColor: workloadColor,
+                                  boxShadow: `0 0 10px ${workloadColor}40`
+                                }} 
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>
