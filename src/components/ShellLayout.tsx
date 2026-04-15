@@ -88,9 +88,7 @@ export function ShellLayout() {
   const isEnabled = (key: string) => {
     const features = (organization?.settings as any)?.features
     if (!features) return true
-    const enabled = features[key] !== false
-    console.log(`Feature ${key}:`, enabled)
-    return enabled
+    return features[key] !== false
   }
 
   return (
