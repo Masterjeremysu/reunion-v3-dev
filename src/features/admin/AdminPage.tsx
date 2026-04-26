@@ -46,6 +46,37 @@ export function AdminPage() {
   })
 
   const userCount = members?.length || 0
+  const isManager = role === 'admin' || role === 'manager'
+
+  // Fetch Pending Consumables
+  const { data: pendingConsos } = useQuery({
+    queryKey: ['pending_consumables', organization?.id],
+    enabled: !!organization?.id && isManager,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('consumable_requests')
+        .select('*, requested_by_colleague_id(name)')
+        .eq('organization_id', organization!.id)
+        .eq('status', 'pending')
+      if (error) throw error
+      return data || []
+    }
+  })
+
+  // Fetch Pending Leaves
+  const { data: pendingLeaves } = useQuery({
+    queryKey: ['pending_leaves', organization?.id],
+    enabled: !!organization?.id && isManager,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('leave_requests')
+        .select('*, colleague_id(name)')
+        .eq('organization_id', organization!.id)
+        .eq('status', 'pending')
+      if (error) throw error
+      return data || []
+    }
+  })
 
   // Calculer les features à afficher (local ou base)
   const features = localFeatures || (organization?.settings as any)?.features || {
@@ -58,12 +89,12 @@ export function AdminPage() {
   }
 
   // Empêcher les non-admins de voir cette page dès que le chargement est fini
-  if (!loading && role !== 'admin') {
+  if (!loading && role !== 'admin' && role !== 'manager') {
     return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--color-bg-app)', padding: 24 }}>
         <Shield style={{ width: 64, height: 64, color: '#E24B4A', opacity: 0.5, marginBottom: 16 }} />
         <h1 style={{ fontSize: 24, fontWeight: 'bold', color: 'var(--color-text-main)', marginBottom: 8 }}>Accès Refusé</h1>
-        <p style={{ color: 'var(--color-text-muted)' }}>Seuls les administrateurs peuvent accéder à cette page.</p>
+        <p style={{ color: 'var(--color-text-muted)' }}>Seuls les administrateurs et managers peuvent accéder à cette page.</p>
       </div>
     )
   }
@@ -171,6 +202,40 @@ export function AdminPage() {
               Espace de travail <strong>{organization?.name}</strong>
             </p>
           </div>
+
+          {/* Validation Hub (Manager only) */}
+          {(pendingConsos?.length || 0) + (pendingLeaves?.length || 0) > 0 && (
+            <div style={{ marginBottom: 32 }}>
+              <h2 style={{ fontSize: 13, fontWeight: 700, color: '#EF9F27', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#EF9F27', boxShadow: '0 0 10px #EF9F27' }} />
+                Centre de Validation
+              </h2>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
+                {pendingConsos && pendingConsos.length > 0 && (
+                  <div onClick={() => window.location.hash = '#/consumables'} style={{ cursor: 'pointer', background: 'var(--color-bg-card)', border: '1px solid #EF9F2740', borderRadius: 16, padding: 20, transition: 'all 0.2s' }}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = '#EF9F27'}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                      <ShoppingCart style={{ width: 24, height: 24, color: '#EF9F27' }} />
+                      <span style={{ fontSize: 18, fontWeight: 800, color: '#EF9F27', fontFamily: 'monospace' }}>{pendingConsos.length}</span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--color-text-main)' }}>Consommables en attente</p>
+                    <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>Des demandes d'opérants nécessitent votre accord.</p>
+                  </div>
+                )}
+                {pendingLeaves && pendingLeaves.length > 0 && (
+                  <div onClick={() => window.location.hash = '#/leaves'} style={{ cursor: 'pointer', background: 'var(--color-bg-card)', border: '1px solid #EF9F2740', borderRadius: 16, padding: 20, transition: 'all 0.2s' }}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = '#EF9F27'}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                      <CalendarDays style={{ width: 24, height: 24, color: '#EF9F27' }} />
+                      <span style={{ fontSize: 18, fontWeight: 800, color: '#EF9F27', fontFamily: 'monospace' }}>{pendingLeaves.length}</span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--color-text-main)' }}>Congés en attente</p>
+                    <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>Nouveaux dossiers d'absences à valider.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 24 }}>
             

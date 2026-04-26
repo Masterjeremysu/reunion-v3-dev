@@ -315,16 +315,16 @@ export function NewMeetingModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'stretch', justifyContent: 'flex-end', background: 'rgba(0,0,0,0.65)' }}
+      style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'stretch', justifyContent: 'flex-end', background: 'var(--color-overlay)', backdropFilter: 'blur(4px)' }}
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <style>{`@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}} @keyframes spin{to{transform:rotate(360deg)}}`}</style>
       <div style={{
-        width: 520, height: '100%', background: '#0d1018',
+        width: 520, height: '100%', background: 'var(--color-bg-sidebar)',
         borderLeft: '1px solid var(--color-border)',
         display: 'flex', flexDirection: 'column', overflow: 'hidden',
         animation: 'slideIn 0.25s ease',
-        boxShadow: '-24px 0 60px var(--color-overlay)',
+        boxShadow: '-24px 0 60px rgba(0,0,0,0.1)',
       }}>
 
         {/* Header */}

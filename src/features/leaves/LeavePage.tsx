@@ -416,9 +416,9 @@ function CreateRequestForm({ colleagues, onClose }: { colleagues: any[]; onClose
   }, [])
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', background: 'var(--color-overlay)' }}
+    <div style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', background: 'var(--color-overlay)', backdropFilter: 'blur(4px)' }}
       onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ height: '100%', width: isMobile ? '100%' : 480, background: '#0d1018', borderLeft: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ height: '100%', width: isMobile ? '100%' : 480, background: 'var(--color-bg-sidebar)', borderLeft: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '-10px 0 30px rgba(0,0,0,0.1)' }}>
 
         {/* Header */}
         <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
@@ -437,7 +437,7 @@ function CreateRequestForm({ colleagues, onClose }: { colleagues: any[]; onClose
           <div>
             <label style={labelStyle}>Collaborateur *</label>
             {role === 'employee' ? (
-              <div style={{ ...fieldStyle, background: 'var(--color-bg-sidebar)', opacity: 0.8, cursor: 'not-allowed', display: 'flex', alignItems: 'center' }}>
+              <div style={{ ...fieldStyle, background: 'var(--color-bg-app)', opacity: 0.8, cursor: 'not-allowed', display: 'flex', alignItems: 'center', border: '1px solid var(--color-border)' }}>
                 {myColleague ? `${myColleague.name} · ${myColleague.post}` : "Profil non lié"}
               </div>
             ) : (
@@ -559,13 +559,13 @@ function CreateRequestForm({ colleagues, onClose }: { colleagues: any[]; onClose
         </form>
 
         {/* Footer */}
-        <div style={{ padding: '16px 24px', borderTop: '1px solid var(--color-border)', display: 'flex', gap: 10, flexShrink: 0 }}>
+        <div style={{ padding: '16px 24px', borderTop: '1px solid var(--color-border)', background: 'var(--color-bg-sidebar)', display: 'flex', gap: 10, flexShrink: 0 }}>
           <button type="button" onClick={onClose}
-            style={{ flex: 1, padding: '11px 0', fontSize: 13, color: 'var(--color-text-muted)', background: 'var(--color-bg-input)', border: '1px solid var(--color-border2)', borderRadius: 10, cursor: 'pointer' }}>
+            style={{ flex: 1, padding: '11px 0', fontSize: 13, color: 'var(--color-text-muted)', background: 'var(--color-bg-app)', border: '1px solid var(--color-border2)', borderRadius: 10, cursor: 'pointer' }}>
             Annuler
           </button>
           <button onClick={handleSubmit as any} disabled={!colleagueId || !startDate || createRequest.isPending}
-            style={{ flex: 2, padding: '11px 0', fontSize: 13, fontWeight: 700, color: 'var(--color-text-main)', background: '#1D9E75', border: 'none', borderRadius: 10, cursor: 'pointer', opacity: !colleagueId || !startDate ? 0.4 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            style={{ flex: 2, padding: '11px 0', fontSize: 13, fontWeight: 700, color: 'white', background: '#1D9E75', border: 'none', borderRadius: 10, cursor: 'pointer', opacity: !colleagueId || !startDate ? 0.4 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, boxShadow: '0 4px 12px rgba(29, 158, 117, 0.2)' }}>
             {createRequest.isPending ? <Loader2 style={{ width: 13, height: 13, animation: 'spin 1s linear infinite' }} /> : <Plus style={{ width: 13, height: 13 }} />}
             Soumettre la demande
           </button>
@@ -821,7 +821,7 @@ export function LeavePage() {
           )}
           <button onClick={() => setShowCreate(true)}
             style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 14px', background: '#1D9E75', border: 'none', borderRadius: 8, color: 'var(--color-text-main)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-            <Plus style={{ width: 12, height: 12 }} /> {isMobile ? 'Demande' : 'Nouvelle demande'}
+            <Plus style={{ width: 12, height: 12 }} /> {isMobile ? 'Déposer' : 'Déposer une demande'}
           </button>
         </div>
       </div>
@@ -841,11 +841,37 @@ export function LeavePage() {
         ))}
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '16px' : '20px 24px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '16px' : '20px 24px', position: 'relative' }}>
         
+        {/* Floating Action Button for Mobile */}
+        {isMobile && tab === 'requests' && (
+          <button 
+            onClick={() => setShowCreate(true)}
+            style={{ position: 'fixed', bottom: 90, right: 20, width: 56, height: 56, borderRadius: 28, background: '#1D9E75', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(29, 158, 117, 0.4)', border: 'none', zIndex: 50, cursor: 'pointer' }}
+          >
+            <Plus style={{ width: 24, height: 24 }} />
+          </button>
+        )}
+
         {/* Prompt de liaison (Visible par l'employé ou l'admin non-lié pour test) */}
         {!linkedId && tab === 'requests' && (
           <LinkProfileOverlay colleagues={colleagues ?? []} />
+        )}
+
+        {tab === 'requests' && filtered.length === 0 && !rLoading && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 0', opacity: 0.6, textAlign: 'center', marginTop: 40 }}>
+            <Calendar style={{ width: 48, height: 48, marginBottom: 16, color: 'var(--color-text-faded)' }} />
+            <p style={{ fontSize: 14, color: 'var(--color-text-main)', margin: 0 }}>Aucune demande trouvée</p>
+            <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>Cliquez sur le bouton + pour déposer une demande</p>
+            {isMobile && (
+              <button 
+                onClick={() => setShowCreate(true)}
+                style={{ marginTop: 20, padding: '10px 20px', background: '#1D9E75', border: 'none', borderRadius: 10, color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+              >
+                Déposer ma première demande
+              </button>
+            )}
+          </div>
         )}
 
         {/* ── REQUESTS TAB ── */}

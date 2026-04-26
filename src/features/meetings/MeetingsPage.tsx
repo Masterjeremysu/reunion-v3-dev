@@ -289,8 +289,8 @@ function DetailView({ meeting, onBack, onEdit, onDelete, colleagues, isMobile }:
                  {meeting.title}
                </h2>
                <div className="flex items-center gap-2 mt-1">
-                 <span className="text-xs text-[var(--color-text-muted)] flex items-center gap-1">
-                   <Calendar className="w-3 h-3" /> {format(d, 'EEEE d MMMM yyyy', { locale: fr })}
+                 <span className="text-xs text-[var(--color-text-main)] opacity-70 flex items-center gap-1 font-medium">
+                   <Calendar className="w-3.5 h-3.5 text-[var(--color-brand)]" /> {format(d, 'EEEE d MMMM yyyy', { locale: fr })}
                  </span>
                  <span className="text-xs text-[var(--color-brand)] px-2 py-0.5 bg-[var(--color-brand)]/10 rounded-full font-bold">
                    {format(d, 'HH:mm')}
@@ -322,7 +322,7 @@ function DetailView({ meeting, onBack, onEdit, onDelete, colleagues, isMobile }:
           <section className="animate-in fade-in slide-in-from-top-2 duration-300">
              <div className="flex items-center gap-2 mb-4">
                 <Users className="w-4 h-4 text-[var(--color-text-faded)]" />
-                <h4 className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)]">Participants ({meeting.colleagues_ids.length})</h4>
+                <h4 className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-main)] opacity-50">Participants ({meeting.colleagues_ids.length})</h4>
              </div>
              <div className="flex flex-wrap gap-2">
                 {meeting.colleagues_ids.map((id: string) => {
@@ -344,7 +344,7 @@ function DetailView({ meeting, onBack, onEdit, onDelete, colleagues, isMobile }:
           <div className="flex items-center justify-between mb-4">
              <div className="flex items-center gap-2">
                 <FileText className="w-4 h-4 text-[var(--color-text-faded)]" />
-                <h4 className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)]">Compte-rendu</h4>
+                <h4 className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-main)] opacity-50">Compte-rendu</h4>
              </div>
              <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-[var(--color-text-faded)]" />

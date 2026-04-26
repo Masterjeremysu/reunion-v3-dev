@@ -142,10 +142,10 @@ export function EditMeetingModal({ meeting, onClose }: { meeting: any; onClose: 
   const fieldStyle = { width: '100%', background: 'var(--color-bg-input)', border: '1px solid var(--color-border2)', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: 'var(--color-text-main)', outline: 'none', boxSizing: 'border-box' as const }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'stretch', justifyContent: 'flex-end', background: 'rgba(0,0,0,0.65)' }}
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'stretch', justifyContent: 'flex-end', background: 'var(--color-overlay)', backdropFilter: 'blur(4px)' }}
       onClick={e => e.target === e.currentTarget && onClose()}>
       <style>{`@keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}} @keyframes spin{to{transform:rotate(360deg)}}`}</style>
-      <div style={{ width: 520, height: '100%', background: '#0d1018', borderLeft: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'slideIn 0.22s ease' }}>
+      <div style={{ width: 520, height: '100%', background: 'var(--color-bg-sidebar)', borderLeft: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'slideIn 0.22s ease', boxShadow: '-24px 0 60px rgba(0,0,0,0.1)' }}>
 
         {/* Header */}
         <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--color-border)', flexShrink: 0 }}>

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useAuth } from '../auth/useAuth'
 import { useConsumables, useCreateConsumable, useUpdateConsumableStatus } from './useConsumables'
 import { useColleagues } from '../colleagues/useColleagues'
 import { Spinner } from '../../components/ui'
@@ -131,11 +132,14 @@ function PipelineView({ consumables, colleagues, onStatusChange, onAdd }: {
 function CreateForm({ colleagues, defaultStatus = 'pending', onClose }: {
   colleagues: any[]; defaultStatus?: ConsoStatus; onClose: () => void
 }) {
+  const { role, colleagueId } = useAuth()
+  const isAdmin = role === 'admin' || role === 'manager'
+  
   const createConsumable = useCreateConsumable()
   const [name, setName] = useState('')
   const [details, setDetails] = useState('')
   const [qty, setQty] = useState(1)
-  const [requestedBy, setRequestedBy] = useState('')
+  const [requestedBy, setRequestedBy] = useState(isAdmin ? '' : (colleagueId || ''))
   const [status, setStatus] = useState<ConsoStatus>(defaultStatus)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -166,11 +170,17 @@ function CreateForm({ colleagues, defaultStatus = 'pending', onClose }: {
         </div>
         <div style={{ flex: 1, minWidth: 140 }}>
           <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Demandé par</label>
-          <select value={requestedBy} onChange={e => setRequestedBy(e.target.value)}
-            style={{ width: '100%', background: 'var(--color-bg-input)', border: '1px solid var(--color-border2)', borderRadius: 8, padding: '8px 10px', fontSize: 13, color: requestedBy ? 'var(--color-text-main)' : 'var(--color-text-faded)', outline: 'none' }}>
-            <option value="">— Sélectionner —</option>
-            {colleagues.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          {isAdmin ? (
+            <select value={requestedBy} onChange={e => setRequestedBy(e.target.value)}
+              style={{ width: '100%', background: 'var(--color-bg-input)', border: '1px solid var(--color-border2)', borderRadius: 8, padding: '8px 10px', fontSize: 13, color: requestedBy ? 'var(--color-text-main)' : 'var(--color-text-faded)', outline: 'none' }}>
+              <option value="">— Sélectionner —</option>
+              {colleagues.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          ) : (
+            <div style={{ width: '100%', background: 'var(--color-bg-input)', border: '1px solid var(--color-border2)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--color-text-faded)', fontFamily: 'monospace' }}>
+              {colleagues?.find(c => c.id === colleagueId)?.name || 'Moi'}
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button type="button" onClick={onClose}
@@ -178,7 +188,7 @@ function CreateForm({ colleagues, defaultStatus = 'pending', onClose }: {
           <button type="submit" disabled={!name.trim() || createConsumable.isPending}
             style={{ padding: '8px 16px', fontSize: 12, fontWeight: 600, color: 'var(--color-text-main)', background: '#1D9E75', border: 'none', borderRadius: 8, cursor: 'pointer', opacity: name.trim() ? 1 : 0.4, display: 'flex', alignItems: 'center', gap: 6 }}>
             {createConsumable.isPending ? <Loader2 style={{ width: 12, height: 12, animation: 'spin 1s linear infinite' }} /> : <Plus style={{ width: 12, height: 12 }} />}
-            Créer
+            Envoyer
           </button>
         </div>
       </form>
@@ -188,11 +198,14 @@ function CreateForm({ colleagues, defaultStatus = 'pending', onClose }: {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export function ConsumablesPage() {
+  const { role, colleagueId, user } = useAuth()
+  const isAdmin = role === 'admin' || role === 'manager'
+
   const { data: consumables, isLoading } = useConsumables()
   const { data: colleagues } = useColleagues()
   const updateStatus = useUpdateConsumableStatus()
 
-  const [view, setView] = useState<'pipeline' | 'list'>('pipeline')
+  const [view, setView] = useState<'pipeline' | 'list'>(isAdmin ? 'pipeline' : 'list')
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<ConsoStatus | 'all'>('all')
   const [showCreate, setShowCreate] = useState(false)
@@ -201,33 +214,50 @@ export function ConsumablesPage() {
   const filtered = useMemo(() => {
     if (!consumables) return []
     const q = search.toLowerCase()
-    return (consumables as any[]).filter(c => {
+    
+    // Filter by role: employees only see their own requests
+    let base = (consumables as any[])
+    if (!isAdmin) {
+      base = base.filter(c => c.user_id === user?.id || (colleagueId && c.requested_by_colleague_id === colleagueId))
+    }
+
+    return base.filter(c => {
       if (filterStatus !== 'all' && c.status !== filterStatus) return false
       if (!q) return true
       const col = colleagues?.find((col: any) => col.id === c.requested_by_colleague_id)
-      return c.item_name.toLowerCase().includes(q) || (c.details ?? '').toLowerCase().includes(q) || (col?.name ?? '').toLowerCase().includes(q)
+      const itemName = c.item_name?.toLowerCase() || ''
+      const details = (c.details ?? '').toLowerCase()
+      const colName = (col?.name ?? '').toLowerCase()
+      return itemName.includes(q) || details.includes(q) || colName.includes(q)
     })
-  }, [consumables, search, filterStatus, colleagues])
+  }, [consumables, search, filterStatus, colleagues, isAdmin, user?.id, colleagueId])
 
   const stats = useMemo(() => {
     const all = (consumables as any[]) ?? []
+    const myItems = isAdmin ? all : all.filter(c => c.user_id === user?.id || (colleagueId && c.requested_by_colleague_id === colleagueId))
+    
     const now = new Date()
     const monthStart = startOfMonth(now)
-    const thisMonth = all.filter(c => new Date(c.created_at) >= monthStart).length
-    const prevMonth = all.filter(c => {
+    const thisMonth = myItems.filter(c => new Date(c.created_at) >= monthStart).length
+    const prevMonth = myItems.filter(c => {
       const d = new Date(c.created_at); return d >= startOfMonth(subMonths(now, 1)) && d < monthStart
     }).length
+    
     return {
-      pending:   all.filter(c => c.status === 'pending').length,
-      approved:  all.filter(c => c.status === 'approved').length,
-      ordered:   all.filter(c => c.status === 'ordered').length,
-      delivered: all.filter(c => c.status === 'delivered').length,
-      rejected:  all.filter(c => c.status === 'rejected').length,
-      thisMonth, prevMonth, total: all.length,
+      pending:   myItems.filter(c => c.status === 'pending').length,
+      approved:  myItems.filter(c => c.status === 'approved').length,
+      ordered:   myItems.filter(c => c.status === 'ordered').length,
+      delivered: myItems.filter(c => c.status === 'delivered').length,
+      rejected:  myItems.filter(c => c.status === 'rejected').length,
+      thisMonth, prevMonth, total: myItems.length,
     }
-  }, [consumables])
+  }, [consumables, isAdmin, user?.id, colleagueId])
 
   const handleStatusChange = (id: string, status: ConsoStatus) => {
+    if (!isAdmin) {
+      toast.error("Seuls les administrateurs peuvent changer le statut")
+      return
+    }
     updateStatus.mutate({ id, status })
   }
 
@@ -237,7 +267,9 @@ export function ConsumablesPage() {
 
       {/* Topbar */}
       <div style={{ flexShrink: 0, padding: '0 24px', height: 52, borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg-sidebar)', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <h1 style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-main)', margin: 0 }}>Consommables</h1>
+        <h1 style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-main)', margin: 0 }}>
+          {isAdmin ? 'Gestion Consommables' : 'Mes Demandes'}
+        </h1>
 
         {/* Mini stats */}
         <div style={{ display: 'flex', gap: 6 }}>
@@ -262,15 +294,17 @@ export function ConsumablesPage() {
             {search && <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex' }}><X style={{ width: 10, height: 10 }} /></button>}
           </div>
 
-          {/* View toggle */}
-          <div style={{ display: 'flex', background: 'var(--color-bg-input)', border: '1px solid var(--color-border)', borderRadius: 8, padding: 2 }}>
-            {(['pipeline', 'list'] as const).map(v => (
-              <button key={v} onClick={() => setView(v)}
-                style={{ padding: '4px 10px', fontSize: 11, borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'monospace', transition: 'all 0.15s', background: view === v ? 'var(--color-border)' : 'transparent', color: view === v ? 'var(--color-text-main)' : 'var(--color-text-faded)' }}>
-                {v === 'pipeline' ? '⊞ Pipeline' : '≡ Liste'}
-              </button>
-            ))}
-          </div>
+          {/* View toggle (Admin only) */}
+          {isAdmin && (
+            <div style={{ display: 'flex', background: 'var(--color-bg-input)', border: '1px solid var(--color-border)', borderRadius: 8, padding: 2 }}>
+              {(['pipeline', 'list'] as const).map(v => (
+                <button key={v} onClick={() => setView(v)}
+                  style={{ padding: '4px 10px', fontSize: 11, borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'monospace', transition: 'all 0.15s', background: view === v ? 'var(--color-border)' : 'transparent', color: view === v ? 'var(--color-text-main)' : 'var(--color-text-faded)' }}>
+                  {v === 'pipeline' ? '⊞ Pipeline' : '≡ Liste'}
+                </button>
+              ))}
+            </div>
+          )}
 
           <button onClick={() => setShowCreate(true)}
             style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 14px', background: '#1D9E75', border: 'none', borderRadius: 8, color: 'var(--color-text-main)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
@@ -284,7 +318,7 @@ export function ConsumablesPage() {
         <button onClick={() => setFilterStatus('all')}
           style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px', background: filterStatus === 'all' ? 'var(--color-border)' : 'transparent', border: `1px solid ${filterStatus === 'all' ? 'var(--color-text-faded)' : 'var(--color-border)'}`, borderRadius: 20, cursor: 'pointer', transition: 'all 0.15s' }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-main)', fontFamily: 'monospace' }}>{stats.total}</span>
-          <span style={{ fontSize: 10, color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>total</span>
+          <span style={{ fontSize: 10, color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>{isAdmin ? 'total' : 'mes demandes'}</span>
         </button>
         {(Object.keys(STATUS_CONF) as ConsoStatus[]).map(s => {
           const conf = STATUS_CONF[s]; const count = stats[s as keyof typeof stats] as number
@@ -296,22 +330,21 @@ export function ConsumablesPage() {
             </button>
           )
         })}
-        {stats.thisMonth > 0 && (
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>
-            <TrendingUp style={{ width: 11, height: 11 }} />
-            {stats.thisMonth} ce mois
-            {stats.prevMonth > 0 && <span style={{ color: stats.thisMonth >= stats.prevMonth ? '#1D9E75' : '#E24B4A' }}>({stats.thisMonth >= stats.prevMonth ? '+' : ''}{stats.thisMonth - stats.prevMonth} vs mois dernier)</span>}
-          </div>
-        )}
       </div>
 
       {/* Create form */}
-      {showCreate && <CreateForm colleagues={colleagues ?? []} defaultStatus={createStatus} onClose={() => setShowCreate(false)} />}
+      {showCreate && (
+        <CreateForm 
+          colleagues={colleagues ?? []} 
+          defaultStatus={createStatus} 
+          onClose={() => setShowCreate(false)} 
+        />
+      )}
 
       {/* Content */}
       {isLoading ? (
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Spinner /></div>
-      ) : view === 'pipeline' ? (
+      ) : view === 'pipeline' && isAdmin ? (
         <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
           <PipelineView
             consumables={filtered}
@@ -321,7 +354,7 @@ export function ConsumablesPage() {
           />
         </div>
       ) : (
-        /* List view */
+        /* List view (Personal for employee, full for admin) */
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px' }}>
           {filtered.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--color-text-faded)', fontSize: 13 }}>
@@ -356,7 +389,13 @@ export function ConsumablesPage() {
                                 <span style={{ fontSize: 10, color: 'var(--color-text-faded)', fontFamily: 'monospace' }}>{fRelative(item.created_at)}</span>
                               </div>
                             </div>
-                            <PipelineBadge status={item.status as ConsoStatus} onChange={(s) => handleStatusChange(item.id, s)} />
+                            {isAdmin ? (
+                              <PipelineBadge status={item.status as ConsoStatus} onChange={(s) => handleStatusChange(item.id, s)} />
+                            ) : (
+                              <div style={{ padding: '4px 10px', background: conf.bg, border: `1px solid ${conf.border}`, borderRadius: 20, fontSize: 11, color: conf.color, fontFamily: 'monospace', fontWeight: 600 }}>
+                                {conf.label}
+                              </div>
+                            )}
                           </div>
                         )
                       })}

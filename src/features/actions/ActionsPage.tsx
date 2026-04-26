@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import { useAuth } from '../auth/useAuth'
 import { useActions, useUpdateAction, useDeleteAction, useCreateAction } from './useActions'
 import { useColleagues } from '../colleagues/useColleagues'
 import { useMeetings } from '../meetings/useMeetings'
@@ -29,6 +30,9 @@ function isLate(a: any) {
 }
 
 export function ActionsPage() {
+  const { role, colleagueId } = useAuth()
+  const isAdmin = role === 'admin' || role === 'manager'
+
   const { data: actions, isLoading } = useActions()
   const { data: colleagues } = useColleagues()
   const { data: meetings } = useMeetings()
@@ -49,20 +53,28 @@ export function ActionsPage() {
 
   const filtered = useMemo(() => {
     if (!actions) return []
+    
     const q = search.toLowerCase().trim()
-    if (!q) return actions
-    return actions.filter(a => {
+    let base = (actions as any[])
+
+    // Filter by role: employees only see their assigned actions
+    // Important: we only filter IF we are sure the user is an employee
+    if (role === 'employee') {
+      base = base.filter(a => a.assigned_to_colleague_id === colleagueId)
+    }
+
+    if (!q) return base
+    return base.filter(a => {
       const c = colleagues?.find(col => col.id === a.assigned_to_colleague_id)
-      return (
-        a.description.toLowerCase().includes(q) ||
-        c?.name.toLowerCase().includes(q)
-      )
+      const desc = a.description?.toLowerCase() || ''
+      const name = c?.name?.toLowerCase() || ''
+      return desc.includes(q) || name.includes(q)
     })
-  }, [actions, search, colleagues])
+  }, [actions, search, colleagues, role, colleagueId])
 
   const byStatus = useMemo(() => {
     const map: Record<Status, any[]> = { pending: [], in_progress: [], completed: [], cancelled: [] }
-    filtered.forEach(a => { if (map[a.status as Status]) map[a.status as Status].push(a) })
+    filtered.forEach(a => { if (a?.status && map[a.status as Status]) map[a.status as Status].push(a) })
     // Sort: late first
     Object.keys(map).forEach(k => {
       map[k as Status].sort((a, b) => (isLate(a) ? -1 : 1) - (isLate(b) ? -1 : 1))
@@ -71,10 +83,10 @@ export function ActionsPage() {
   }, [filtered])
 
   const stats = useMemo(() => ({
-    total: actions?.length ?? 0,
-    late: actions?.filter(isLate).length ?? 0,
-    rate: actions?.length ? Math.round((actions.filter(a => a.status === 'completed').length / actions.length) * 100) : 0,
-  }), [actions])
+    total: filtered?.length ?? 0,
+    late: filtered?.filter(isLate).length ?? 0,
+    rate: filtered?.length ? Math.round((filtered.filter(a => a.status === 'completed').length / filtered.length) * 100) : 0,
+  }), [filtered])
 
   return (
     <div className="flex flex-col h-full bg-[var(--color-bg-app)] overflow-hidden">
@@ -85,9 +97,11 @@ export function ActionsPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-lg md:text-xl font-bold text-[var(--color-text-main)] flex items-center gap-2">
-                Actions <span className="text-[10px] md:text-xs font-mono bg-[var(--color-bg-input)] px-2 py-0.5 rounded-full text-[var(--color-text-faded)]">{stats.total}</span>
+                {isAdmin ? 'Gestion Actions' : 'Mes Actions'} <span className="text-[10px] md:text-xs font-mono bg-[var(--color-bg-input)] px-2 py-0.5 rounded-full text-[var(--color-text-faded)]">{stats.total}</span>
               </h1>
-              <p className="hidden md:block text-xs text-[var(--color-text-muted)] mt-0.5">Suivi des engagements et décisions</p>
+              <p className="hidden md:block text-xs text-[var(--color-text-muted)] mt-0.5">
+                {isAdmin ? 'Suivi global des engagements' : 'Mes tâches et engagements'}
+              </p>
             </div>
             
             {/* Mobile Stats chips */}
@@ -112,7 +126,7 @@ export function ActionsPage() {
                  </div>
                )}
                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-500/10 border border-green-500/20 rounded-full text-[10px] font-bold text-green-400">
-                  <Check className="w-3 h-3" /> {stats.rate}% Terminées
+                  <Check className="w-3 h-3" /> {stats.rate}% {isAdmin ? 'Terminées' : 'Réussies'}
                </div>
              </div>
 
@@ -135,9 +149,11 @@ export function ActionsPage() {
                   </button>
                 </div>
 
-                <Button variant="primary" size="sm" onClick={() => setIsCreateOpen(true)} className="px-3 md:px-4 min-h-[38px] md:min-h-[auto]">
-                  <Plus className="w-4 h-4 md:mr-2" /> <span className="hidden md:inline">Nouvelle</span>
-                </Button>
+                {isAdmin && (
+                  <Button variant="primary" size="sm" onClick={() => setIsCreateOpen(true)} className="px-3 md:px-4 min-h-[38px] md:min-h-[auto]">
+                    <Plus className="w-4 h-4 md:mr-2" /> <span className="hidden md:inline">Nouvelle</span>
+                  </Button>
+                )}
              </div>
           </div>
         </div>
@@ -171,6 +187,7 @@ export function ActionsPage() {
                   actions={byStatus[col.key]}
                   colleagues={colleagues ?? []}
                   meetings={meetings ?? []}
+                  isAdmin={isAdmin}
                 />
              ))}
           </div>
@@ -188,7 +205,7 @@ export function ActionsPage() {
                    </div>
                    <div className="space-y-3">
                      {list.map(a => (
-                       <ActionCard key={a.id} action={a} colleagues={colleagues ?? []} meetings={meetings ?? []} />
+                       <ActionCard key={a.id} action={a} colleagues={colleagues ?? []} meetings={meetings ?? []} isAdmin={isAdmin} />
                      ))}
                    </div>
                  </div>
@@ -197,7 +214,7 @@ export function ActionsPage() {
              {filtered.length === 0 && (
                <div className="py-20 text-center text-[var(--color-text-faded)]">
                  <Filter className="w-12 h-12 mx-auto mb-4 opacity-10" />
-                 <p>Aucun résultat pour cette recherche</p>
+                 <p>{search ? 'Aucun résultat pour cette recherche' : 'Aucune action assignée'}</p>
                </div>
              )}
           </div>
@@ -209,7 +226,7 @@ export function ActionsPage() {
   )
 }
 
-function KanbanColumn({ col, actions, colleagues, meetings }: any) {
+function KanbanColumn({ col, actions, colleagues, meetings, isAdmin }: any) {
   const [showQuick, setShowQuick] = useState(false)
   
   return (
@@ -220,9 +237,11 @@ function KanbanColumn({ col, actions, colleagues, meetings }: any) {
           <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-main)]">{col.label}</span>
           <span className="text-[10px] bg-[var(--color-bg-input)] text-[var(--color-text-faded)] px-1.5 py-0.5 rounded-md font-mono">{actions.length}</span>
         </div>
-        <button onClick={() => setShowQuick(!showQuick)} className="p-1 hover:bg-[var(--color-bg-input)] rounded-md text-[var(--color-text-faded)] hover:text-[var(--color-brand)] transition-all">
-          <Plus className="w-4 h-4" />
-        </button>
+        {isAdmin && (
+          <button onClick={() => setShowQuick(!showQuick)} className="p-1 hover:bg-[var(--color-bg-input)] rounded-md text-[var(--color-text-faded)] hover:text-[var(--color-brand)] transition-all">
+            <Plus className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
@@ -233,22 +252,23 @@ function KanbanColumn({ col, actions, colleagues, meetings }: any) {
           </div>
         )}
         {actions.map((a: any) => (
-          <ActionCard key={a.id} action={a} colleagues={colleagues} meetings={meetings} />
+          <ActionCard key={a.id} action={a} colleagues={colleagues} meetings={meetings} isAdmin={isAdmin} />
         ))}
       </div>
     </div>
   )
 }
 
-function ActionCard({ action, colleagues, meetings }: any) {
+function ActionCard({ action, colleagues, meetings, isAdmin }: any) {
+  const { role } = useAuth()
   const updateAction = useUpdateAction()
   const deleteAction = useDeleteAction()
   const [editing, setEditing] = useState(false)
   const [desc, setDesc] = useState(action.description)
   
   const late = isLate(action)
-  const assignee = colleagues.find((c: any) => c.id === action.assigned_to_colleague_id)
-  const meeting = meetings.find((m: any) => m.id === action.meeting_id)
+  const assignee = colleagues?.find((c: any) => c.id === action.assigned_to_colleague_id)
+  const meeting = meetings?.find((m: any) => m.id === action.meeting_id)
 
   const handleToggle = () => {
     const next: Status = action.status === 'completed' ? 'pending' : 'completed'
@@ -283,7 +303,7 @@ function ActionCard({ action, colleagues, meetings }: any) {
         </button>
 
         <div className="flex-1 min-w-0">
-          {editing ? (
+          {editing && isAdmin ? (
             <textarea 
               value={desc} onChange={e => setDesc(e.target.value)}
               onBlur={handleSave}
@@ -292,11 +312,19 @@ function ActionCard({ action, colleagues, meetings }: any) {
             />
           ) : (
             <p 
-              onClick={() => setEditing(true)}
-              className={`text-sm leading-relaxed transition-all ${action.status === 'completed' ? 'text-[var(--color-text-faded)] line-through' : 'text-[var(--color-text-main)]'}`}
+              onClick={() => isAdmin && setEditing(true)}
+              className={`text-sm leading-relaxed transition-all ${action.status === 'completed' ? 'text-[var(--color-text-faded)] line-through' : 'text-[var(--color-text-main)]'} ${isAdmin ? 'cursor-pointer' : ''}`}
             >
               {action.description}
             </p>
+          )}
+          {role === 'employee' && action.status !== 'completed' && (
+            <button 
+              onClick={handleToggle}
+              className="mt-2 text-[10px] font-bold text-[var(--color-brand)] flex items-center gap-1 hover:underline"
+            >
+              <Check className="w-3 h-3" /> Marquer comme terminée
+            </button>
           )}
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3">
@@ -321,9 +349,11 @@ function ActionCard({ action, colleagues, meetings }: any) {
           </div>
         </div>
 
-        <button onClick={handleDelete} className="opacity-0 group-hover:opacity-100 p-1.5 text-[var(--color-text-faded)] hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all">
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
+        {isAdmin && (
+          <button onClick={handleDelete} className="opacity-0 group-hover:opacity-100 p-1.5 text-[var(--color-text-faded)] hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all">
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
     </div>
   )
@@ -352,7 +382,7 @@ function QuickCreateInline({ status, onClose, colleagues, meetings }: any) {
       <div className="flex items-center justify-between mt-2 pt-2 border-t border-[var(--color-border)]">
         <select value={assignTo} onChange={e => setAssignTo(e.target.value)} className="bg-transparent text-[10px] text-[var(--color-text-muted)] focus:outline-none max-w-[100px]">
           <option value="">À qui ?</option>
-          {colleagues.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          {colleagues?.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
         <div className="flex gap-2">
            <button onClick={onClose} className="p-1 px-3 text-[10px] text-[var(--color-text-faded)] hover:bg-[var(--color-bg-input)] rounded-md font-bold">Annuler</button>
@@ -364,6 +394,7 @@ function QuickCreateInline({ status, onClose, colleagues, meetings }: any) {
 }
 
 function CreateActionModal({ isOpen, onClose, colleagues, meetings }: any) {
+  const { colleagueId } = useAuth()
   const createAction = useCreateAction()
   const [desc, setDesc] = useState('')
   const [status, setStatus] = useState<Status>('pending')

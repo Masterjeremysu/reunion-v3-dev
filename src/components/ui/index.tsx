@@ -101,9 +101,9 @@ export function Avatar({ name, size = 'md' }: { name: string; size?: 'xs' | 'sm'
 type BtnVariant = 'default' | 'primary' | 'ghost' | 'danger'
 const BTN_STYLES: Record<BtnVariant, string> = {
   default: 'bg-transparent border border-[var(--color-border2)] text-[var(--color-text-muted)] hover:bg-[var(--color-bg-input)] hover:text-[var(--color-text-main)]',
-  primary: 'bg-teal-600 border border-teal-600 text-white hover:bg-teal-700',
-  ghost:   'bg-transparent border-transparent text-slate-400 hover:text-slate-200 hover:bg-white/5',
-  danger:  'bg-transparent border border-red-500/30 text-red-400 hover:bg-red-500/10',
+  primary: 'bg-[var(--color-brand)] border border-[var(--color-brand)] text-white hover:opacity-90 shadow-sm',
+  ghost:   'bg-transparent border-transparent text-[var(--color-text-faded)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-bg-input)]',
+  danger:  'bg-transparent border border-red-500/30 text-red-500 hover:bg-red-500/10',
 }
 export function Button({ variant = 'default', size = 'md', children, className, ...props }: {
   variant?: BtnVariant; size?: 'sm' | 'md'; children: React.ReactNode; className?: string
