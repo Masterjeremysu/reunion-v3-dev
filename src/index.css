@@ -1,0 +1,309 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Palette Prestige - Base (Dark Mode by default) */
+    --color-bg-app: #0A0C10;
+    --color-bg-sidebar: #0F1218;
+    --color-bg-card: rgba(255, 255, 255, 0.03);
+    --color-bg-input: rgba(255, 255, 255, 0.05);
+    --color-border: rgba(255, 255, 255, 0.08);
+    --color-border2: rgba(255, 255, 255, 0.12);
+    
+    /* Accents */
+    --color-brand: #00E5A0;
+    --color-brand-glow: rgba(0, 229, 160, 0.15);
+    --color-brand-faded: rgba(0, 229, 160, 0.08);
+    --color-text-main: #F0F2F5;
+    --color-text-muted: #C5CCD8; /* Further boosted from #B1B8C5 */
+    --color-text-faded: #94A3B8; /* Further boosted from #7C8BA1 */
+    --color-text-chart: #94A3B8;
+    
+    /* Gradients */
+    --grad-main: linear-gradient(135deg, #00E5A0 0%, #00BFA5 100%);
+    --grad-surface: radial-gradient(circle at top left, rgba(255,255,255,0.05) 0%, transparent 40%);
+
+    --scrollbar-thumb: rgba(255, 255, 255, 0.1);
+    --scrollbar-hover: rgba(255, 255, 255, 0.18);
+    --color-shadow: rgba(0, 0, 0, 0.4);
+    --color-overlay: rgba(0, 0, 0, 0.7);
+  }
+
+  /* Support du mode clair via la classe .light (injectée par ThemeProvider) */
+  .light {
+    --color-bg-app: #F8FAFC;
+    --color-bg-sidebar: #FFFFFF;
+    --color-bg-card: #FFFFFF;
+    --color-bg-input: #F1F5F9;
+    --color-border: #E2E8F0;
+    --color-border2: #CBD5E1;
+    
+    --color-brand: #059669;
+    --color-brand-glow: rgba(5, 150, 105, 0.1);
+    --color-brand-faded: rgba(5, 150, 105, 0.05);
+    --color-text-main: #1E293B;
+    --color-text-muted: #475569;
+    --color-text-faded: #94A3B8;
+    --color-text-chart: #64748B;
+    
+    --grad-main: linear-gradient(135deg, #059669 0%, #10B981 100%);
+    --grad-surface: radial-gradient(circle at top left, rgba(0,0,0,0.02) 0%, transparent 40%);
+    
+    --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+    --scrollbar-hover: rgba(0, 0, 0, 0.25);
+    --color-overlay: rgba(0, 0, 0, 0.4);
+    --color-shadow: rgba(0, 0, 0, 0.08);
+  }
+
+  /* Support explicite du mode sombre via .dark */
+  .dark {
+    --color-bg-app: #0A0C10;
+    --color-bg-sidebar: #0F1218;
+    --color-bg-card: rgba(255, 255, 255, 0.03);
+    --color-bg-input: rgba(255, 255, 255, 0.05);
+    --color-border: rgba(255, 255, 255, 0.08);
+    --color-border2: rgba(255, 255, 255, 0.12);
+    --color-text-main: #F0F2F5;
+    --color-text-muted: #C5CCD8;
+    --color-text-faded: #94A3B8;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  * {
+    border-color: var(--color-border);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html, body, #root {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background-color: var(--color-bg-app);
+    color: var(--color-text-main);
+    font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    overflow-x: hidden;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
+
+  input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; }
+  .dark input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.5); }
+  
+  select option {
+    background-color: var(--color-bg-card);
+    color: var(--color-text-main);
+  }
+}
+
+@layer components {
+  .glass-card {
+    background: var(--color-bg-card);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--color-border);
+    border-radius: 20px;
+  }
+
+  .input {
+    width: 100%;
+    background-color: var(--color-bg-input);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    color: var(--color-text-main);
+    outline: none;
+    transition: all 0.2s;
+  }
+  .input::placeholder { color: var(--color-text-faded); }
+  .input:focus { border-color: var(--color-brand); background-color: rgba(255, 255, 255, 0.1); }
+
+  .btn-primary {
+    background: var(--grad-main);
+    color: white;
+    border-radius: 12px;
+    padding: 0.75rem 1.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: all 0.2s;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 12px var(--color-brand-glow);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 16px var(--color-brand-glow); }
+  .btn-primary:disabled { opacity: 0.5; pointer-events: none; }
+
+  /* Kanban Styles */
+  .kanban-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+    height: 100%;
+    padding: 1rem;
+    overflow-x: auto;
+  }
+  
+  .action-card-modern {
+    background: var(--color-bg-sidebar);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 12px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+  .action-card-modern:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border-color: var(--color-brand);
+  }
+}
+
+@layer utilities {
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   MOBILE RESPONSIVE — Full App Overhaul
+   ══════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* ── Global Layout ───────────────────────────────────────────────── */
+  .main-content {
+    padding-top: 62px !important;
+    padding-bottom: 80px !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    height: 100vh !important;
+  }
+
+  .main-content > div {
+    height: auto !important;
+    min-height: 100% !important;
+    overflow: visible !important;
+  }
+
+  /* ── Topbars ─────────────────────────────────────────────────────── */
+  .main-content > div > div:first-child {
+    flex-wrap: wrap !important;
+    height: auto !important;
+    min-height: 52px;
+    padding: 12px 16px !important;
+    gap: 8px !important;
+  }
+
+  /* ── Dashboard ───────────────────────────────────────────────────── */
+  /* KPI row: force 1 column on small mobile */
+  .main-content > div > div:first-child > div:last-child {
+    grid-template-columns: 1fr !important;
+    width: 100% !important;
+  }
+
+  .main-content > div > div:first-child > div:first-child {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+
+  .main-content > div > div:nth-child(2) {
+    padding: 12px !important;
+  }
+
+  /* react-grid-layout: force single column stack */
+  .react-grid-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
+  }
+  .react-grid-item {
+    position: relative !important;
+    transform: none !important;
+    left: 0 !important;
+    top: auto !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 280px !important;
+    margin-bottom: 16px !important;
+  }
+
+  /* ── Actions Page (Kanban) ───────────────────────────────────────── */
+  .kanban-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding-bottom: 80px;
+    overflow-x: hidden;
+  }
+  
+  .kanban-column {
+    flex-shrink: 0;
+    width: 100%;
+  }
+
+  .mobile-tabs-container {
+    display: flex;
+    overflow-x: auto;
+    gap: 4px;
+    padding: 8px;
+    background: var(--color-bg-card);
+    border-bottom: 1px solid var(--color-border);
+    position: sticky;
+    top: 52px;
+    z-index: 20;
+    scrollbar-width: none;
+  }
+  .mobile-tabs-container::-webkit-scrollbar { display: none; }
+  .mobile-tab-btn {
+    white-space: nowrap;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-sidebar);
+    color: var(--color-text-muted);
+    transition: all 0.2s;
+  }
+  .mobile-tab-btn.active {
+    background: var(--color-brand);
+    color: #0A0C10; /* Dark text for better contrast on bright brand green */
+    border-color: var(--color-brand);
+    box-shadow: 0 4px 12px var(--color-brand-faded);
+  }
+  .light .mobile-tab-btn.active {
+    color: white; /* White text is fine on darker emerald light mode brand */
+  }
+
+  /* ── Split Layouts (Meetings, Colleagues) ────────────────────────── */
+  .main-content > div > div:nth-child(2),
+  .main-content > div > div:nth-child(3) {
+    flex-direction: column !important;
+  }
+
+  .main-content > div > div:nth-child(2) > div:first-child,
+  .main-content > div > div:nth-child(3) > div:first-child {
+    width: 100% !important;
+    max-height: 45vh !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--color-border) !important;
+  }
+
+  /* ── Forms ───────────────────────────────────────────────────────── */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
