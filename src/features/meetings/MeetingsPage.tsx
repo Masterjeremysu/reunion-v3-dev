@@ -41,7 +41,7 @@ function useCRItems(meetingId: string | null) {
 function parseItem(raw: string): string | null {
   const t = raw.trim()
   if (!t) return null
-  const match = t.match(/^[0-9a-f\-]{36}::(.+)$/i)
+  const match = t.match(/^[0-9a-f-]{36}::(.+)$/i)
   if (match) return match[1].trim() || null
   return t
 }

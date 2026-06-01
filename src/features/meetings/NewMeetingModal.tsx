@@ -379,7 +379,7 @@ export function NewMeetingModal({ onClose }: { onClose: () => void }) {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontFamily: 'monospace', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <CalendarDays style={{ width: 11, height: 11 }} /> Date
                   </label>
                   <input type="date" value={date} onChange={e => setDate(e.target.value)} style={fieldStyle}
@@ -387,7 +387,7 @@ export function NewMeetingModal({ onClose }: { onClose: () => void }) {
                     onBlur={e => (e.target.style.borderColor = 'var(--color-border2)')} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontFamily: 'monospace', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <Clock style={{ width: 11, height: 11 }} /> Heure
                   </label>
                   <input type="time" value={time} onChange={e => setTime(e.target.value)} style={fieldStyle}

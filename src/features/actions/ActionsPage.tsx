@@ -307,7 +307,7 @@ function ActionCard({ action, colleagues, meetings, isAdmin }: any) {
             <textarea 
               value={desc} onChange={e => setDesc(e.target.value)}
               onBlur={handleSave}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSave() }; if (e.key==='Escape') setEditing(false) }}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSave() } if (e.key==='Escape') setEditing(false) }}
               autoFocus className="w-full bg-transparent text-sm text-[var(--color-text-main)] focus:outline-none resize-none leading-relaxed"
             />
           ) : (
@@ -376,7 +376,7 @@ function QuickCreateInline({ status, onClose, colleagues, meetings }: any) {
       <textarea 
         autoFocus value={desc} onChange={e => setDesc(e.target.value)}
         placeholder="Que faut-il faire ?"
-        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAdd() }; if (e.key==='Escape') onClose() }}
+        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAdd() } if (e.key==='Escape') onClose() }}
         className="w-full bg-transparent text-sm focus:outline-none resize-none min-h-[60px]"
       />
       <div className="flex items-center justify-between mt-2 pt-2 border-t border-[var(--color-border)]">

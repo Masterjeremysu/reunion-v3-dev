@@ -362,7 +362,7 @@ export function ColleaguesPage() {
   const allColleagues = useMemo(() => colleagues ?? [], [colleagues])
 
   const filtered = useMemo(() => {
-    let list = allColleagues.filter(c => {
+    const list = allColleagues.filter(c => {
       const active = c.is_active !== false
       if (!showInactive && !active) return false
       if (showInactive && active) return false

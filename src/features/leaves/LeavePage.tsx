@@ -89,7 +89,7 @@ function useLeaveBalances() {
     queryKey: ['leave_balances', organization?.id, role, user?.id],
     enabled: !!organization?.id,
     queryFn: async () => {
-      let query = supabase
+      const query = supabase
         .from('leave_balances')
         .select('*, colleagues!inner(id, name, post, organization_id)')
         .eq('colleagues.organization_id', organization!.id)
