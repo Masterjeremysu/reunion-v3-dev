@@ -4,6 +4,13 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 import { useMemo, useState, useCallback } from 'react'
+import { motion } from 'framer-motion'
+import { clsx, type ClassValue } from 'clsx'
+import { twMerge } from 'tailwind-merge'
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
 import { Responsive, WidthProvider } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
@@ -106,14 +113,14 @@ function loadLayout() {
   try {
     const saved = localStorage.getItem(LAYOUT_STORAGE_KEY)
     if (saved) return JSON.parse(saved)
-  } catch {}
+  } catch (e) { /* ignore */ }
   return DEFAULT_LAYOUT
 }
 
 function saveLayout(layouts: any) {
   try {
     localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(layouts))
-  } catch {}
+  } catch (e) { /* ignore */ }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -625,7 +632,7 @@ export function DashboardPage() {
         >
           {/* Widget: Activité */}
           <div key="activity">
-            <Widget editMode={editMode}>
+            <Widget editMode={editMode} index={i}>
               <SectionTitle>Activité — 8 dernières semaines</SectionTitle>
               <div style={{ flex: 1, minHeight: 0 }}>
                 <ResponsiveContainer width="100%" height="100%">
@@ -660,7 +667,7 @@ export function DashboardPage() {
 
           {/* Widget: Analyse CR */}
           <div key="cr">
-            <Widget editMode={editMode}>
+            <Widget editMode={editMode} index={i}>
               <SectionTitle>Analyse CR — 20 dernières réunions</SectionTitle>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, flex: 1 }}>
                 {[
@@ -690,7 +697,7 @@ export function DashboardPage() {
 
           {/* Widget: Performance équipe */}
           <div key="perf">
-            <Widget editMode={editMode}>
+            <Widget editMode={editMode} index={i}>
               <SectionTitle action="Voir équipe" onAction={() => navigate(ROUTES.COLLEAGUES)}>Performance équipe</SectionTitle>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', flex: 1 }}>
                 {colleaguePerf.length === 0
@@ -712,7 +719,7 @@ export function DashboardPage() {
 
           {/* Widget: Baromètre humeur */}
           <div key="mood">
-            <Widget editMode={editMode}>
+            <Widget editMode={editMode} index={i}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexShrink: 0 }}>
                 <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-text-faded)', fontFamily: 'monospace', margin: 0 }}>Baromètre humeur</p>
                 {stats.avgMood && (
@@ -743,7 +750,7 @@ export function DashboardPage() {
 
           {/* Widget: Prochaines réunions */}
           <div key="meetings">
-            <Widget editMode={editMode}>
+            <Widget editMode={editMode} index={i}>
               <SectionTitle action="Toutes" onAction={() => navigate(ROUTES.MEETINGS)}>Prochaines réunions</SectionTitle>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, overflowY: 'auto', flex: 1 }}>
                 {upcomingMeetings.length === 0
@@ -774,7 +781,7 @@ export function DashboardPage() {
 
           {/* Widget: Alertes */}
           <div key="alerts">
-            <Widget editMode={editMode} borderColor={alerts.some(a => a.level === 'critical') ? '#E24B4A25' : undefined}>
+            <Widget editMode={editMode} borderColor={alerts.some(a => a.level === 'critical') ? '#ef4444' : undefined} index={i}>
               <SectionTitle>Alertes actives</SectionTitle>
               <div style={{ overflowY: 'auto', flex: 1 }}>
                 {alerts.length === 0 ? (
@@ -791,14 +798,14 @@ export function DashboardPage() {
 
           {/* Widget: Congés */}
           <div key="leaves">
-            <Widget editMode={editMode}>
+            <Widget editMode={editMode} index={i}>
               <LeavesWidget onNavigate={() => navigate('/leaves')} />
             </Widget>
           </div>
 
           {/* Widget: Actions urgentes */}
           <div key="urgentact">
-            <Widget editMode={editMode}>
+            <Widget editMode={editMode} index={i}>
               <SectionTitle action="Voir tout" onAction={() => navigate(ROUTES.ACTIONS)}>Actions urgentes</SectionTitle>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5, overflowY: 'auto', flex: 1 }}>
                 {urgentActions.length === 0
@@ -825,7 +832,7 @@ export function DashboardPage() {
 
           {/* Widget: Véhicules */}
           <div key="vehicles">
-            <Widget editMode={editMode}>
+            <Widget editMode={editMode} index={i}>
               <SectionTitle action="Parc auto" onAction={() => navigate(ROUTES.VEHICLES)}>Véhicules</SectionTitle>
               <div style={{ overflowY: 'auto', flex: 1 }}>
                 {(vehicles ?? []).slice(0, 4).map(v => {

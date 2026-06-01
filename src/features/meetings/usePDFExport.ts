@@ -45,7 +45,7 @@ function downloadBlob(blob: Blob, filename: string) {
 
 function parseItems(arr: string[]): string[] {
   return (arr || []).map(s => {
-    const m = s.match(/^[0-9a-f\-]{36}::(.+)$/i)
+    const m = s.match(/^[0-9a-f-]{36}::(.+)$/i)
     if (m) return m[1].trim()
     if (/^[0-9a-f]{8}-/i.test(s)) return ''
     return s.trim()
