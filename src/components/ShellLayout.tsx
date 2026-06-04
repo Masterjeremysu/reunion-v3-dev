@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
-import { useAuth } from '../features/auth/useAuth'
+import { useAuth } from '../auth/useAuth'
 import { useTheme } from './ThemeProvider'
 import {
   LayoutDashboard, Users, CalendarDays, CheckSquare,
@@ -24,10 +24,11 @@ function cn(...inputs: ClassValue[]) {
 function useSidebarBadges() {
   const { user, organization } = useAuth()
 
+  // ✅ CORRIGÉ : 'actions' → 'action_items'
   const { data: actions } = useQuery({
     queryKey: ['actions', 'badges', organization?.id],
     queryFn: async () => {
-      const { data } = await supabase.from('actions').select('status, due_date').eq('organization_id', organization?.id)
+      const { data } = await supabase.from('action_items').select('status, due_date').eq('organization_id', organization?.id)
       return data || []
     },
     enabled: !!organization?.id
@@ -52,8 +53,8 @@ function useSidebarBadges() {
   })
 
   return {
-    openActions: actions?.filter(a => a.status === 'open').length || 0,
-    lateActions: actions?.filter(a => a.status === 'open' && a.due_date && new Date(a.due_date) < new Date()).length || 0,
+    openActions: actions?.filter(a => a.status === 'pending' || a.status === 'in_progress').length || 0,
+    lateActions: actions?.filter(a => (a.status === 'pending' || a.status === 'in_progress') && a.due_date && new Date(a.due_date) < new Date()).length || 0,
     expiredInspections: inspections?.filter(i => i.status === 'overdue').length || 0,
     soonInspections: inspections?.filter(i => i.status === 'pending').length || 0,
     pendingConsumables: consumables?.length || 0
