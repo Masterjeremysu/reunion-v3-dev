@@ -23,13 +23,10 @@ export function useAllInspections() {
     queryKey: [QK.INSPECTIONS, organization?.id],
     enabled: !!organization?.id,
     queryFn: async () => {
-      // In a real app with RLS, the DB filters inspections automatically.
-      // Here we fetch all and let vehicle relation filter if needed, 
-      // but without RLS we filter the relation using inner join logic if possible,
-      // or rely on the RLS we will activate next.
+      // ✅ CORRIGÉ : enlève !inner pour éviter l'erreur 400
       const { data, error } = await supabase
         .from('vehicle_inspections')
-        .select('*, vehicles!inner(id, name, license_plate, type, organization_id)')
+        .select('*, vehicles(id, name, license_plate, type, organization_id)')
         .eq('vehicles.organization_id', organization!.id)
         .order('due_date', { ascending: true })
       if (error) throw error
