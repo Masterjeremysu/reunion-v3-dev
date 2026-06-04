@@ -479,8 +479,8 @@ export function DashboardPage() {
   }, [colleagues, actions])
 
   const moodTrend = useMemo(() =>
-    ((moods as any[]) ?? []).slice(0, 14).reverse().map((m: any, i: number) => ({
-      i: i + 1, score: m.mood_score,
+    ((moods as any[]) ?? []).slice(0, 14).reverse().map((m: any, idx: number) => ({
+      i: idx + 1, score: m.mood_score,
       date: format(new Date(m.created_at), 'd/MM', { locale: fr }),
     })), [moods])
 
@@ -632,7 +632,7 @@ export function DashboardPage() {
         >
           {/* Widget: Activité */}
           <div key="activity">
-            <Widget editMode={editMode} index={i}>
+            <Widget editMode={editMode}>
               <SectionTitle>Activité — 8 dernières semaines</SectionTitle>
               <div style={{ flex: 1, minHeight: 0 }}>
                 <ResponsiveContainer width="100%" height="100%">
@@ -667,7 +667,7 @@ export function DashboardPage() {
 
           {/* Widget: Analyse CR */}
           <div key="cr">
-            <Widget editMode={editMode} index={i}>
+            <Widget editMode={editMode}>
               <SectionTitle>Analyse CR — 20 dernières réunions</SectionTitle>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, flex: 1 }}>
                 {[
@@ -697,14 +697,14 @@ export function DashboardPage() {
 
           {/* Widget: Performance équipe */}
           <div key="perf">
-            <Widget editMode={editMode} index={i}>
+            <Widget editMode={editMode}>
               <SectionTitle action="Voir équipe" onAction={() => navigate(ROUTES.COLLEAGUES)}>Performance équipe</SectionTitle>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', flex: 1 }}>
                 {colleaguePerf.length === 0
                   ? <p style={{ fontSize: 12, color: 'var(--color-text-faded)', fontFamily: 'monospace' }}>Aucune donnée</p>
-                  : colleaguePerf.map((c, i) => (
+                  : colleaguePerf.map((c, idx) => (
                     <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ fontSize: 10, color: 'var(--color-text-faded)', fontFamily: 'monospace', width: 14, textAlign: 'right', flexShrink: 0 }}>{i + 1}</span>
+                      <span style={{ fontSize: 10, color: 'var(--color-text-faded)', fontFamily: 'monospace', width: 14, textAlign: 'right', flexShrink: 0 }}>{idx + 1}</span>
                       <span style={{ fontSize: 12, color: 'var(--color-text-main)', width: 72, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
                       <div style={{ flex: 1, height: 6, background: 'var(--color-bg-input)', borderRadius: 3, overflow: 'hidden' }}>
                         <div style={{ height: '100%', width: `${c.rate}%`, background: c.rate >= 80 ? '#1D9E75' : c.rate >= 50 ? '#EF9F27' : '#E24B4A', borderRadius: 3, transition: 'width 0.6s ease' }} />
@@ -719,7 +719,7 @@ export function DashboardPage() {
 
           {/* Widget: Baromètre humeur */}
           <div key="mood">
-            <Widget editMode={editMode} index={i}>
+            <Widget editMode={editMode}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexShrink: 0 }}>
                 <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-text-faded)', fontFamily: 'monospace', margin: 0 }}>Baromètre humeur</p>
                 {stats.avgMood && (
@@ -750,7 +750,7 @@ export function DashboardPage() {
 
           {/* Widget: Prochaines réunions */}
           <div key="meetings">
-            <Widget editMode={editMode} index={i}>
+            <Widget editMode={editMode}>
               <SectionTitle action="Toutes" onAction={() => navigate(ROUTES.MEETINGS)}>Prochaines réunions</SectionTitle>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, overflowY: 'auto', flex: 1 }}>
                 {upcomingMeetings.length === 0
@@ -781,7 +781,7 @@ export function DashboardPage() {
 
           {/* Widget: Alertes */}
           <div key="alerts">
-            <Widget editMode={editMode} borderColor={alerts.some(a => a.level === 'critical') ? '#ef4444' : undefined} index={i}>
+            <Widget editMode={editMode} borderColor={alerts.some(a => a.level === 'critical') ? '#ef4444' : undefined}>
               <SectionTitle>Alertes actives</SectionTitle>
               <div style={{ overflowY: 'auto', flex: 1 }}>
                 {alerts.length === 0 ? (
@@ -789,8 +789,8 @@ export function DashboardPage() {
                     <Award style={{ width: 24, height: 24, margin: '0 auto 8px', display: 'block', opacity: 0.6 }} />
                     Tout est sous contrôle
                   </div>
-                ) : alerts.map((a, i) => (
-                  <AlertItem key={i} level={a.level} title={a.title} sub={a.sub} action={a.action} onClick={() => navigate(a.route)} />
+                ) : alerts.map((a, idx) => (
+                  <AlertItem key={idx} level={a.level} title={a.title} sub={a.sub} action={a.action} onClick={() => navigate(a.route)} />
                 ))}
               </div>
             </Widget>
@@ -798,14 +798,14 @@ export function DashboardPage() {
 
           {/* Widget: Congés */}
           <div key="leaves">
-            <Widget editMode={editMode} index={i}>
+            <Widget editMode={editMode}>
               <LeavesWidget onNavigate={() => navigate('/leaves')} />
             </Widget>
           </div>
 
           {/* Widget: Actions urgentes */}
           <div key="urgentact">
-            <Widget editMode={editMode} index={i}>
+            <Widget editMode={editMode}>
               <SectionTitle action="Voir tout" onAction={() => navigate(ROUTES.ACTIONS)}>Actions urgentes</SectionTitle>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5, overflowY: 'auto', flex: 1 }}>
                 {urgentActions.length === 0
@@ -832,7 +832,7 @@ export function DashboardPage() {
 
           {/* Widget: Véhicules */}
           <div key="vehicles">
-            <Widget editMode={editMode} index={i}>
+            <Widget editMode={editMode}>
               <SectionTitle action="Parc auto" onAction={() => navigate(ROUTES.VEHICLES)}>Véhicules</SectionTitle>
               <div style={{ overflowY: 'auto', flex: 1 }}>
                 {(vehicles ?? []).slice(0, 4).map(v => {
