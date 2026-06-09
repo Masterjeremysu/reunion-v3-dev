@@ -27,7 +27,7 @@ function useSidebarBadges() {
   const { data: actions } = useQuery({
     queryKey: ['actions', 'badges', organization?.id],
     queryFn: async () => {
-      const { data } = await supabase.from('actions').select('status, due_date').eq('organization_id', organization?.id)
+      const { data } = await supabase.from('action_items').select('status, due_date').eq('organization_id', organization?.id)
       return data || []
     },
     enabled: !!organization?.id
@@ -36,7 +36,7 @@ function useSidebarBadges() {
   const { data: inspections } = useQuery({
     queryKey: ['inspections', 'badges', organization?.id],
     queryFn: async () => {
-      const { data } = await supabase.from('vehicle_inspections').select('status').eq('organization_id', organization?.id)
+      const { data } = await supabase.from('vehicle_inspections').select('status, vehicles!inner(organization_id)').eq('vehicles.organization_id', organization?.id)
       return data || []
     },
     enabled: !!organization?.id
